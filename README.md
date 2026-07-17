@@ -2,6 +2,10 @@
 
 一个纯静态的 SenseNova / new-api 图片生成前端，不需要 Node、npm 或本地后端。
 
+- 在线地址：<https://csgarden.github.io/sensenova-image-studio/>
+- GitHub 仓库：<https://github.com/CSGarden/sensenova-image-studio>
+- 界面采用 GitHub Primer 风格，并支持浅色、深色主题。
+
 ## 使用
 
 1. 直接双击 `index.html`，用现代浏览器打开。
@@ -39,3 +43,7 @@ Content-Type: application/json
 - API Key 默认不会保存；只有勾选「仅在此设备记住」后才写入浏览器 `localStorage`。
 - 这是浏览器直连方案，适合本人电脑上的本地使用。不要把带有固定密钥的页面部署到公开网站。
 - SenseNova 官方图片临时链接通常只保留 1 小时，请及时下载。
+
+## GitHub Pages
+
+仓库使用 `.github/workflows/pages.yml` 自动部署。向 `main` 分支推送后，GitHub Actions 会发布最新静态页面。
