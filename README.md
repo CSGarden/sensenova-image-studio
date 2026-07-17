@@ -1,10 +1,13 @@
-# Nova Canvas
+# Image Generation Studio
 
-一个纯静态的 SenseNova / new-api 图片生成前端，不需要 Node、npm 或本地后端。
+一个兼容 OpenAI Images API 的纯静态图片生成前端，可通过 new-api 调用 SenseNova 或其他图片模型，不需要 Node、npm 或本地后端。
 
 - 在线地址：<https://csgarden.github.io/sensenova-image-studio/>
 - GitHub 仓库：<https://github.com/CSGarden/sensenova-image-studio>
 - 界面采用 GitHub Primer 风格，并支持浅色、深色主题。
+- 默认模型是 `sensenova-u1-fast`，模型名称可以自由修改。
+- 内置 SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
+- 提示词模板库包含广告、短视频、漫画、动作戏、口播 B-roll 和教学流程等分镜模板。
 
 ## 使用
 

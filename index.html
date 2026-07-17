@@ -6,9 +6,9 @@
     <meta name="theme-color" content="#0b0d10" />
     <meta
       name="description"
-      content="本地运行的 SenseNova U1 Fast 图片生成工作台，输入 API Key 即可创作、预览与下载图片。"
+      content="兼容 OpenAI Images API 的纯静态图片生成工作台，可通过 new-api 调用不同图片模型。"
     />
-    <title>SenseNova Image Studio</title>
+    <title>Image Generation Studio</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -21,7 +21,7 @@
             </svg>
           </span>
           <span class="brand-copy">
-            <strong>SenseNova Image Studio</strong>
+            <strong>Image Generation Studio</strong>
             <span class="public-badge">Public</span>
           </span>
         </a>
@@ -52,11 +52,11 @@
         <aside class="control-panel" aria-label="生成设置">
           <div class="panel-intro">
             <div>
-              <span class="eyebrow">SETTINGS</span>
-              <h1>配置图片生成</h1>
-              <p>填写 new-api 连接信息与生成参数。</p>
-            </div>
-            <span class="version-tag">U1 Fast</span>
+                <span class="eyebrow">SETTINGS</span>
+                <h1>配置图片生成</h1>
+                <p>连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。</p>
+              </div>
+              <span class="version-tag">Images API</span>
           </div>
 
           <form id="generationForm">
@@ -129,8 +129,11 @@
               <div class="template-row" aria-label="提示词模板">
                 <button type="button" class="template-chip" data-template="poster">产品海报</button>
                 <button type="button" class="template-chip" data-template="infographic">知识信息图</button>
-                <button type="button" class="template-chip" data-template="storyboard">电影分镜</button>
-                <button type="button" class="template-chip" data-template="chinese">国风插画</button>
+                <button type="button" class="template-chip" data-template="short_video_storyboard">短视频分镜</button>
+                <button type="button" class="template-chip template-library-button" id="openTemplateLibrary">
+                  模板库
+                  <span aria-hidden="true">▾</span>
+                </button>
               </div>
             </section>
 
@@ -169,33 +172,56 @@
 
             <section class="form-section compact-section">
               <div class="settings-grid">
-                <div class="setting-block model-block">
-                  <label for="modelName">模型名称</label>
-                  <div class="input-shell compact-input-shell">
-                    <input id="modelName" name="model" value="sensenova-u1-fast" spellcheck="false" required />
+                  <div class="setting-block model-block">
+                    <label for="modelName">模型名称</label>
+                    <div class="input-shell compact-input-shell">
+                      <input id="modelName" name="model" value="sensenova-u1-fast" spellcheck="false" required />
+                    </div>
+                    <p class="field-description">默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。</p>
                   </div>
-                </div>
 
-                <div class="setting-block">
-                  <label for="imageSize">画布比例</label>
-                  <div class="select-shell">
-                    <span class="ratio-preview ratio-landscape" id="ratioPreview" aria-hidden="true"></span>
-                    <select id="imageSize" name="size">
-                      <option value="2752x1536" selected>16:9 · 横向</option>
-                      <option value="1536x2752">9:16 · 竖向</option>
-                      <option value="2048x2048">1:1 · 方形</option>
-                      <option value="2496x1664">3:2 · 横向</option>
-                      <option value="1664x2496">2:3 · 竖向</option>
-                      <option value="2368x1760">4:3 · 横向</option>
-                      <option value="1760x2368">3:4 · 竖向</option>
-                      <option value="2272x1824">5:4 · 横向</option>
-                      <option value="1824x2272">4:5 · 竖向</option>
-                      <option value="3072x1376">21:9 · 超宽</option>
-                      <option value="1344x3136">9:21 · 超长</option>
-                    </select>
-                    <span class="select-arrow" aria-hidden="true">⌄</span>
+                  <div class="setting-block">
+                    <label for="sizeSelectButton">画布比例</label>
+                    <input id="imageSize" name="size" type="hidden" value="2752x1536" />
+                    <div class="custom-select" id="sizeSelect">
+                      <button
+                        class="custom-select-trigger"
+                        id="sizeSelectButton"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                      >
+                        <span class="ratio-preview" id="ratioPreview" aria-hidden="true"></span>
+                        <span class="custom-select-copy">
+                          <strong id="sizeSelectLabel">16:9 · 横向</strong>
+                          <small id="sizeSelectMeta">SenseNova · 2752×1536</small>
+                        </span>
+                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+                          <path d="M4.427 5.427a.75.75 0 0 1 1.06 0L8 7.94l2.513-2.513a.75.75 0 1 1 1.06 1.06l-3.043 3.043a.75.75 0 0 1-1.06 0L4.427 6.487a.75.75 0 0 1 0-1.06Z" />
+                        </svg>
+                      </button>
+                      <div class="custom-select-menu" id="sizeSelectMenu" role="listbox" tabindex="-1" hidden>
+                        <div class="select-group-label">SenseNova 2K</div>
+                        <button class="custom-select-option selected" type="button" role="option" aria-selected="true" data-value="2752x1536" data-label="16:9 · 横向" data-meta="SenseNova · 2752×1536">16:9 · 横向 <small>2752×1536</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1536x2752" data-label="9:16 · 竖向" data-meta="SenseNova · 1536×2752">9:16 · 竖向 <small>1536×2752</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="2048x2048" data-label="1:1 · 方形" data-meta="SenseNova · 2048×2048">1:1 · 方形 <small>2048×2048</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="2496x1664" data-label="3:2 · 横向" data-meta="SenseNova · 2496×1664">3:2 · 横向 <small>2496×1664</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1664x2496" data-label="2:3 · 竖向" data-meta="SenseNova · 1664×2496">2:3 · 竖向 <small>1664×2496</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="2368x1760" data-label="4:3 · 横向" data-meta="SenseNova · 2368×1760">4:3 · 横向 <small>2368×1760</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1760x2368" data-label="3:4 · 竖向" data-meta="SenseNova · 1760×2368">3:4 · 竖向 <small>1760×2368</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="2272x1824" data-label="5:4 · 横向" data-meta="SenseNova · 2272×1824">5:4 · 横向 <small>2272×1824</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1824x2272" data-label="4:5 · 竖向" data-meta="SenseNova · 1824×2272">4:5 · 竖向 <small>1824×2272</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="3072x1376" data-label="21:9 · 超宽" data-meta="SenseNova · 3072×1376">21:9 · 超宽 <small>3072×1376</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1344x3136" data-label="9:21 · 超长" data-meta="SenseNova · 1344×3136">9:21 · 超长 <small>1344×3136</small></button>
+                        <div class="select-group-label">通用 OpenAI 尺寸</div>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1024x1024" data-label="1:1 · 方形" data-meta="通用 · 1024×1024">1:1 · 方形 <small>1024×1024</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1536x1024" data-label="3:2 · 横向" data-meta="通用 · 1536×1024">3:2 · 横向 <small>1536×1024</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1024x1536" data-label="2:3 · 竖向" data-meta="通用 · 1024×1536">2:3 · 竖向 <small>1024×1536</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1792x1024" data-label="7:4 · 横向" data-meta="通用 · 1792×1024">7:4 · 横向 <small>1792×1024</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1024x1792" data-label="4:7 · 竖向" data-meta="通用 · 1024×1792">4:7 · 竖向 <small>1024×1792</small></button>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
                 <div class="setting-block">
                   <span class="setting-label">生成数量</span>
@@ -217,7 +243,7 @@
                 <span class="shortcut-hint">⌘ ↵</span>
               </button>
               <button class="cancel-button" id="cancelButton" type="button" hidden>取消本次生成</button>
-              <p class="action-note">图片链接由官方临时提供，请在生成后 1 小时内下载。</p>
+                <p class="action-note">部分模型返回的图片链接具有时效，请在生成后及时下载。</p>
             </div>
           </form>
         </aside>
@@ -255,12 +281,12 @@
               </div>
               <h3>还没有生成图片</h3>
               <p>在左侧写下画面构想，选择比例与风格，生成结果会在这里出现。</p>
-              <div class="empty-specs">
-                <span>2K 输出</span>
-                <i></i>
-                <span>11 种比例</span>
-                <i></i>
-                <span>U1 Fast</span>
+                <div class="empty-specs">
+                  <span>OpenAI Images API</span>
+                  <i></i>
+                  <span>16 种尺寸</span>
+                  <i></i>
+                  <span>自定义模型</span>
               </div>
             </div>
 
@@ -289,16 +315,41 @@
           </div>
 
           <div class="canvas-footer">
-            <div class="footer-status">
-              <span class="mini-led"></span>
-              <span>DIRECT API</span>
-              <span class="footer-divider"></span>
-              <span>纯静态前端</span>
+              <div class="footer-status">
+                <span class="mini-led"></span>
+                <span>OPENAI-COMPATIBLE API</span>
+                <span class="footer-divider"></span>
+                <span>浏览器直连</span>
             </div>
             <span id="generationMeta">READY FOR INPUT</span>
           </div>
         </section>
       </main>
+    </div>
+
+    <div class="modal-backdrop" id="templateModal" hidden>
+      <section class="template-dialog" role="dialog" aria-modal="true" aria-labelledby="templateDialogTitle">
+        <header class="template-dialog-header">
+          <div>
+            <h2 id="templateDialogTitle">提示词模板库</h2>
+            <p>选择模板后仍可在文本框中自由修改人物、场景、镜头数和视觉风格。</p>
+          </div>
+          <button class="dialog-close-button" id="closeTemplateLibrary" type="button" aria-label="关闭模板库">×</button>
+        </header>
+        <div class="template-dialog-tools">
+          <div class="input-shell template-search-shell">
+            <span class="input-icon" aria-hidden="true">⌕</span>
+            <input id="templateSearch" type="search" placeholder="搜索广告、漫画、口播、动作戏……" autocomplete="off" />
+          </div>
+          <div class="template-filters" id="templateFilters" role="group" aria-label="模板分类">
+            <button type="button" class="template-filter selected" data-category="all">全部</button>
+            <button type="button" class="template-filter" data-category="storyboard">分镜</button>
+            <button type="button" class="template-filter" data-category="design">设计</button>
+            <button type="button" class="template-filter" data-category="illustration">插画</button>
+          </div>
+        </div>
+        <div class="template-library-grid" id="templateLibraryGrid"></div>
+      </section>
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
