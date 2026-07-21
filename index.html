@@ -59,6 +59,10 @@
               <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 1.5h12.5c.966 0 1.75.784 1.75 1.75v8.5a1.75 1.75 0 0 1-1.75 1.75H7.92l-3.83 2.298A.75.75 0 0 1 3 15.155V13.5H1.75A1.75 1.75 0 0 1 0 11.75v-8.5C0 2.284.784 1.5 1.75 1.5Zm0 1.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v1.08l2.83-1.698A.75.75 0 0 1 7.715 12h6.535a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75Z" /></svg>
               多模态对话
             </button>
+            <button class="workspace-tab" id="editModeTab" type="button" role="tab" aria-selected="false">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-7.75 7.75a1.75 1.75 0 0 1-.734.43l-3.25.975a.75.75 0 0 1-.931-.93l.975-3.25a1.75 1.75 0 0 1 .43-.735l7.7-7.8Zm1.414 1.06a.25.25 0 0 0-.353 0l-.793.793 1.439 1.439.793-.793a.25.25 0 0 0 0-.353l-1.086-1.086ZM11.659 5.78 10.22 4.34l-6.867 6.956a.25.25 0 0 0-.061.105l-.563 1.876 1.876-.563a.25.25 0 0 0 .105-.061l6.949-6.873Z" /></svg>
+              图片编辑
+            </button>
           </div>
 
           <div class="panel-intro">
@@ -257,6 +261,67 @@
               <button class="cancel-button" id="cancelButton" type="button" hidden>取消本次生成</button>
                 <p class="action-note">部分模型返回的图片链接具有时效，请在生成后及时下载。</p>
             </div>
+
+            </div>
+            <div class="edit-controls" id="editControls" hidden>
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="editModelName">编辑模型</label>
+                  <span class="required-badge">必填</span>
+                </div>
+                <div class="input-shell compact-input-shell">
+                  <input id="editModelName" value="gpt-image-1" placeholder="例如 gpt-image-1 / 你的编辑模型" spellcheck="false" />
+                </div>
+                <p class="field-description">模型必须支持 new-api 的 <code>/images/edits</code> 接口；Flash-Lite 不能直接编辑图片。</p>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="editPrompt">修改要求</label>
+                  <span class="required-badge">必填</span>
+                </div>
+                <div class="textarea-shell">
+                  <textarea id="editPrompt" rows="6" placeholder="例如：把背景改成海边日落，保留主体、姿态和毛发细节……"></textarea>
+                </div>
+                <div class="template-row edit-prompt-hints">
+                  <button class="template-chip" type="button" data-edit-hint="background">修改背景</button>
+                  <button class="template-chip" type="button" data-edit-hint="style">改变风格</button>
+                  <button class="template-chip" type="button" data-edit-hint="remove">移除物体</button>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <span>原图</span>
+                  <span class="section-hint">PNG / JPEG / WebP</span>
+                </div>
+                <div class="edit-upload-zone" id="editUploadZone">
+                  <input id="editImageFileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                  <div class="edit-upload-placeholder" id="editUploadPlaceholder">
+                    <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 16 11.75v-7.5A1.75 1.75 0 0 0 14.25 2.5H1.75Zm12.5 1.5a.25.25 0 0 1 .25.25v5.19l-2.22-2.22a.75.75 0 0 0-1.06 0l-2.47 2.47-1.47-1.47a.75.75 0 0 0-1.06 0L1.5 12.94V4.25A.25.25 0 0 1 1.75 4h12.5ZM2.56 12l4.19-4.19 1.47 1.47a.75.75 0 0 0 1.06 0l2.47-2.47 2.75 2.75v2.19a.25.25 0 0 1-.25.25H2.56Z" /></svg>
+                    <strong>点击选择或拖拽原图</strong>
+                    <span>图片会以 multipart/form-data 上传到 new-api</span>
+                  </div>
+                  <div class="edit-upload-preview" id="editUploadPreview" hidden>
+                    <img id="editImagePreview" alt="待编辑原图" />
+                    <div><strong id="editImageName"></strong><span id="editImageSize"></span></div>
+                    <button class="icon-button" id="removeEditImage" type="button" aria-label="移除原图">×</button>
+                  </div>
+                </div>
+              </section>
+
+              <div class="capability-callout edit-capability-callout">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm.75 2.25a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" /></svg>
+                <p><strong>编辑接口要求</strong>如果接口返回 404 或提示模型不支持，请在 new-api 中启用支持 `/images/edits` 的模型。SenseNova Flash-Lite 仅负责理解图片。</p>
+              </div>
+
+              <div class="action-stack">
+                <button class="generate-button" id="editButton" type="button">
+                  <span class="button-icon" aria-hidden="true">✎</span>
+                  <span id="editButtonText">开始编辑图片</span>
+                </button>
+                <button class="cancel-button" id="cancelEditButton" type="button" hidden>取消本次编辑</button>
+              </div>
             </div>
 
             <div class="chat-controls" id="chatControls" hidden>
@@ -317,9 +382,9 @@
         <section class="canvas-panel" id="generationCanvas" aria-label="生成结果">
           <div class="canvas-toolbar">
             <div class="canvas-title">
-              <span class="eyebrow">LIVE OUTPUT</span>
-              <div class="title-line">
-                <h2>Generations</h2>
+                <span class="eyebrow" id="canvasEyebrow">LIVE OUTPUT</span>
+                <div class="title-line">
+                <h2 id="canvasTitle">Generations</h2>
                 <span class="result-count" id="resultCount">0 IMAGES</span>
               </div>
             </div>
@@ -345,8 +410,8 @@
                   <path d="M18 2v4M16 4h4"></path>
                 </svg>
               </div>
-              <h3>还没有生成图片</h3>
-              <p>在左侧写下画面构想，选择比例与风格，生成结果会在这里出现。</p>
+              <h3 id="emptyTitle">还没有生成图片</h3>
+              <p id="emptyDescription">在左侧写下画面构想，选择比例与风格，生成结果会在这里出现。</p>
                 <div class="empty-specs">
                   <span>OpenAI Images API</span>
                   <i></i>

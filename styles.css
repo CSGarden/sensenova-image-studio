@@ -261,7 +261,7 @@ a:focus-visible {
 
 .workspace-switcher {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin-bottom: 20px;
   padding: 4px;
@@ -458,6 +458,107 @@ a:focus-visible {
   display: block;
   margin-bottom: 2px;
   color: var(--fgColor-default);
+}
+
+code {
+  padding: 1px 4px;
+  color: var(--fgColor-default);
+  border-radius: 4px;
+  background: var(--bgColor-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.edit-prompt-hints {
+  gap: 6px;
+}
+
+.edit-upload-zone {
+  min-height: 142px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--bgColor-muted);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.edit-upload-zone.drag-active,
+.edit-upload-zone:hover {
+  border-color: var(--accent-emphasis);
+  background: color-mix(in srgb, var(--accent-emphasis) 6%, var(--bgColor-muted));
+}
+
+.edit-upload-placeholder {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  color: var(--fgColor-muted);
+  text-align: center;
+  font-size: 10px;
+}
+
+.edit-upload-placeholder svg {
+  margin-bottom: 2px;
+  color: var(--accent-fgColor-default);
+}
+
+.edit-upload-placeholder strong {
+  color: var(--fgColor-default);
+  font-size: 12px;
+}
+
+.edit-upload-preview {
+  width: 100%;
+  min-height: 142px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+.edit-upload-preview img {
+  width: 92px;
+  height: 112px;
+  object-fit: contain;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 5px;
+  background: var(--bgColor-inset);
+}
+
+.edit-upload-preview > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.edit-upload-preview strong {
+  overflow: hidden;
+  color: var(--fgColor-default);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.edit-upload-preview span {
+  color: var(--fgColor-muted);
+  font-size: 10px;
+}
+
+.edit-upload-preview .icon-button {
+  width: 30px;
+  flex-basis: 30px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+}
+
+.edit-capability-callout {
+  margin-top: 20px;
 }
 
 .field-description {
@@ -2001,6 +2102,20 @@ body.modal-open {
   .studio-layout {
     width: calc(100% - 16px);
     margin: 8px auto;
+  }
+
+  .workspace-switcher {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .workspace-tab {
+    gap: 4px;
+    padding-inline: 3px;
+    font-size: 10px;
+  }
+
+  .workspace-tab svg {
+    display: none;
   }
 
   .control-panel {

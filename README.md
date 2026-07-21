@@ -9,6 +9,7 @@
 - 内置 SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
 - 提示词模板库包含广告、短视频、漫画、动作戏、口播 B-roll 和教学流程等分镜模板。
 - 新增 `sensenova-6.7-flash-lite` 多模态对话模式，支持连续文本对话、图片 URL 和本地图片理解。
+- 新增“图片编辑”模式，使用兼容 OpenAI `POST /images/edits` 的模型直接上传原图并返回编辑结果。
 
 ## 使用
 
@@ -75,6 +76,19 @@ POST {API_BASE_URL}/chat/completions
 支持 PNG、JPEG、GIF、WebP，单次消息最多添加 4 张图片。本地文件会转换成 data URL；如果 new-api 不接受 data URL，请改用可公开访问的图片 URL。
 
 Flash-Lite 的官方能力是图片理解与分析，不会直接返回修改后的图片。页面提供“生成改图提示词”和“转到图片生成”两步工作流，用生成模型重新创作，但这不等同于像素级原图编辑。
+
+## 图片编辑
+
+图片编辑模式使用：
+
+```text
+POST {API_BASE_URL}/images/edits
+Content-Type: multipart/form-data
+```
+
+表单字段为 `model`、`prompt`、`size`、`n` 和 `image`。默认编辑模型填写为 `gpt-image-1`，也可以改成你的 new-api 中实际支持 `/images/edits` 的模型。
+
+SenseNova 6.7 Flash-Lite 不支持这个编辑接口，因此不能直接用它返回编辑后的图片。若 new-api 没有配置图片编辑模型，页面会提示接口或模型不支持。
 
 ## 安全提示
 

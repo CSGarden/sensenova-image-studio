@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   chatModel: 'nova-canvas-chat-model',
   chatSystem: 'nova-canvas-chat-system',
   chatReasoning: 'nova-canvas-chat-reasoning',
+  editModel: 'nova-canvas-edit-model',
 };
 
 const STYLE_SUFFIXES = {
@@ -216,14 +217,20 @@ const els = {
   templateLibraryGrid: document.querySelector('#templateLibraryGrid'),
   generationModeTab: document.querySelector('#generationModeTab'),
   chatModeTab: document.querySelector('#chatModeTab'),
+  editModeTab: document.querySelector('#editModeTab'),
   generationControls: document.querySelector('#generationControls'),
   chatControls: document.querySelector('#chatControls'),
+  editControls: document.querySelector('#editControls'),
   generationCanvas: document.querySelector('#generationCanvas'),
   chatCanvas: document.querySelector('#chatCanvas'),
   workspaceEyebrow: document.querySelector('#workspaceEyebrow'),
   workspaceTitle: document.querySelector('#workspaceTitle'),
   workspaceDescription: document.querySelector('#workspaceDescription'),
   workspaceBadge: document.querySelector('#workspaceBadge'),
+  canvasEyebrow: document.querySelector('#canvasEyebrow'),
+  canvasTitle: document.querySelector('#canvasTitle'),
+  emptyTitle: document.querySelector('#emptyTitle'),
+  emptyDescription: document.querySelector('#emptyDescription'),
   chatModelName: document.querySelector('#chatModelName'),
   chatSystemPrompt: document.querySelector('#chatSystemPrompt'),
   reasoningControl: document.querySelector('#reasoningControl'),
@@ -242,6 +249,19 @@ const els = {
   chatInput: document.querySelector('#chatInput'),
   sendChatButton: document.querySelector('#sendChatButton'),
   chatMeta: document.querySelector('#chatMeta'),
+  editModelName: document.querySelector('#editModelName'),
+  editPrompt: document.querySelector('#editPrompt'),
+  editUploadZone: document.querySelector('#editUploadZone'),
+  editUploadPlaceholder: document.querySelector('#editUploadPlaceholder'),
+  editUploadPreview: document.querySelector('#editUploadPreview'),
+  editImagePreview: document.querySelector('#editImagePreview'),
+  editImageName: document.querySelector('#editImageName'),
+  editImageSize: document.querySelector('#editImageSize'),
+  editImageFileInput: document.querySelector('#editImageFileInput'),
+  removeEditImage: document.querySelector('#removeEditImage'),
+  editButton: document.querySelector('#editButton'),
+  editButtonText: document.querySelector('#editButtonText'),
+  cancelEditButton: document.querySelector('#cancelEditButton'),
 };
 
 const state = {
@@ -261,6 +281,8 @@ const state = {
   chatController: null,
   chatReasoning: 'medium',
   attachmentId: 0,
+  editImageFile: null,
+  editObjectUrl: null,
 };
 
 function safeStorageGet(key) {
@@ -296,12 +318,14 @@ function restorePreferences() {
   const storedChatModel = safeStorageGet(STORAGE_KEYS.chatModel);
   const storedChatSystem = safeStorageGet(STORAGE_KEYS.chatSystem);
   const storedChatReasoning = safeStorageGet(STORAGE_KEYS.chatReasoning);
+  const storedEditModel = safeStorageGet(STORAGE_KEYS.editModel);
 
   if (storedBaseUrl) els.baseUrl.value = storedBaseUrl;
   if (storedModel) els.modelName.value = storedModel;
   if (storedPrompt) els.prompt.value = storedPrompt;
   if (storedChatModel) els.chatModelName.value = storedChatModel;
   if (storedChatSystem) els.chatSystemPrompt.value = storedChatSystem;
+  if (storedEditModel) els.editModelName.value = storedEditModel;
 
   els.rememberKey.checked = remembersKey;
   if (remembersKey) els.apiKey.value = safeStorageGet(STORAGE_KEYS.apiKey) || '';
@@ -323,23 +347,37 @@ function applyTheme(theme) {
 
 function switchMode(mode) {
   const isChat = mode === 'chat';
-  state.mode = isChat ? 'chat' : 'generation';
+  const isEdit = mode === 'edit';
+  const isGeneration = !isChat && !isEdit;
+  state.mode = isChat ? 'chat' : isEdit ? 'edit' : 'generation';
 
-  els.generationControls.hidden = isChat;
+  els.generationControls.hidden = !isGeneration;
+  els.editControls.hidden = !isEdit;
   els.generationCanvas.hidden = isChat;
   els.chatControls.hidden = !isChat;
   els.chatCanvas.hidden = !isChat;
-  els.generationModeTab.classList.toggle('selected', !isChat);
+  els.generationModeTab.classList.toggle('selected', isGeneration);
   els.chatModeTab.classList.toggle('selected', isChat);
-  els.generationModeTab.setAttribute('aria-selected', String(!isChat));
+  els.editModeTab.classList.toggle('selected', isEdit);
+  els.generationModeTab.setAttribute('aria-selected', String(isGeneration));
   els.chatModeTab.setAttribute('aria-selected', String(isChat));
+  els.editModeTab.setAttribute('aria-selected', String(isEdit));
 
-  els.workspaceEyebrow.textContent = isChat ? 'VISION CHAT' : 'SETTINGS';
-  els.workspaceTitle.textContent = isChat ? '配置多模态对话' : '配置图片生成';
+  els.workspaceEyebrow.textContent = isChat ? 'VISION CHAT' : isEdit ? 'IMAGE EDITS' : 'SETTINGS';
+  els.workspaceTitle.textContent = isChat ? '配置多模态对话' : isEdit ? '编辑原图' : '配置图片生成';
   els.workspaceDescription.textContent = isChat
     ? '使用 Flash-Lite 进行文本对话、图片理解和改图提示词设计。'
-    : '连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。';
-  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : 'Images API';
+    : isEdit
+      ? '上传原图并调用支持 /images/edits 的模型生成编辑结果。'
+      : '连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。';
+  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : isEdit ? 'Images Edits' : 'Images API';
+
+  els.canvasEyebrow.textContent = isEdit ? 'EDITED OUTPUT' : 'LIVE OUTPUT';
+  els.canvasTitle.textContent = isEdit ? 'Edited images' : 'Generations';
+  els.emptyTitle.textContent = isEdit ? '还没有编辑结果' : '还没有生成图片';
+  els.emptyDescription.textContent = isEdit
+    ? '上传原图并写下修改要求，编辑结果会在这里出现。'
+    : '在左侧写下画面构想，选择比例与风格，生成结果会在这里出现。';
 
   window.requestAnimationFrame(() => {
     if (isChat) els.chatInput.focus({ preventScroll: true });
@@ -752,6 +790,150 @@ function clearChat() {
   renderAttachments();
   renderChatMessages();
   els.chatMeta.textContent = 'READY';
+}
+
+function setEditImage(file) {
+  if (!file) return;
+  const supportedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
+  if (!supportedTypes.has(file.type)) {
+    showToast('编辑模式支持 PNG、JPEG、WebP 图片', 'error');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    showToast('原图超过 20 MB，请压缩后重试', 'error');
+    return;
+  }
+
+  if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
+  state.editImageFile = file;
+  state.editObjectUrl = URL.createObjectURL(file);
+  els.editImagePreview.src = state.editObjectUrl;
+  els.editImageName.textContent = file.name;
+  els.editImageSize.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB · ${file.type}`;
+  els.editUploadPlaceholder.hidden = true;
+  els.editUploadPreview.hidden = false;
+}
+
+function clearEditImage() {
+  if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
+  state.editObjectUrl = null;
+  state.editImageFile = null;
+  els.editImageFileInput.value = '';
+  els.editImagePreview.removeAttribute('src');
+  els.editUploadPlaceholder.hidden = false;
+  els.editUploadPreview.hidden = true;
+}
+
+function buildEditEndpoint(input) {
+  const raw = input.trim().replace(/\/+$/, '');
+  if (!raw) throw new Error('请输入 new-api 地址');
+
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('new-api 地址格式不正确，请填写完整的 http(s) 地址');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('new-api 地址必须使用 http 或 https');
+  }
+  if (/\/images\/edits$/i.test(parsed.pathname)) return raw;
+  if (/\/v1$/i.test(parsed.pathname)) return `${raw}/images/edits`;
+  return `${raw}/v1/images/edits`;
+}
+
+function setEditBusy(isBusy) {
+  els.editButton.disabled = isBusy;
+  els.editButtonText.textContent = isBusy ? '编辑中…' : '开始编辑图片';
+  els.cancelEditButton.hidden = !isBusy;
+}
+
+async function editImage(event) {
+  event?.preventDefault();
+  if (state.controller) return;
+
+  const apiKey = els.apiKey.value.trim();
+  const model = els.editModelName.value.trim();
+  const prompt = els.editPrompt.value.trim();
+  if (!apiKey) {
+    els.apiKey.focus();
+    showToast('请输入 API Key', 'error');
+    return;
+  }
+  if (!model) {
+    els.editModelName.focus();
+    showToast('请输入编辑模型名称', 'error');
+    return;
+  }
+  if (!prompt) {
+    els.editPrompt.focus();
+    showToast('请输入修改要求', 'error');
+    return;
+  }
+  if (!state.editImageFile) {
+    showToast('请先上传原图', 'error');
+    return;
+  }
+
+  let endpoint;
+  try {
+    endpoint = buildEditEndpoint(els.baseUrl.value);
+  } catch (error) {
+    els.baseUrl.focus();
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const body = new FormData();
+  body.append('model', model);
+  body.append('prompt', prompt);
+  body.append('size', els.imageSize.value);
+  body.append('n', String(state.count));
+  body.append('image', state.editImageFile, state.editImageFile.name);
+
+  persistConnectionSettings();
+  persistApiKey();
+  safeStorageSet(STORAGE_KEYS.editModel, model);
+  state.controller = new AbortController();
+  setEditBusy(true);
+  setView('loading');
+  clearExpiryTimer();
+  startLoadingMessages();
+  els.generationMeta.textContent = 'EDITING…';
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body,
+      signal: state.controller.signal,
+    });
+    const raw = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw new Error(raw ? `接口返回了非 JSON 内容：${raw.slice(0, 160)}` : '接口返回内容为空');
+    }
+    if (!response.ok) throw new Error(extractError(payload, response.status));
+
+    const results = normalizeResults(payload);
+    if (!results.length) throw new Error('接口请求成功，但响应中没有找到编辑后的图片数据');
+    state.results = results;
+    renderResults(results, { size: els.imageSize.value, model });
+    showToast(`成功编辑 ${results.length} 张图片`);
+  } catch (error) {
+    if (error.name === 'AbortError') showError('本次图片编辑已取消。');
+    else if (error instanceof TypeError && /fetch/i.test(error.message)) {
+      showError('无法连接图片编辑接口。请确认 new-api 已配置 /images/edits，并允许浏览器跨域上传。');
+    } else {
+      showError(error.message || '图片编辑失败，请检查模型和接口配置。');
+    }
+  } finally {
+    stopLoadingMessages();
+    setEditBusy(false);
+    state.controller = null;
+  }
 }
 
 function persistConnectionSettings() {
@@ -1229,6 +1411,10 @@ function showError(message) {
 
 async function generateImages(event) {
   event?.preventDefault();
+  if (state.mode === 'edit') {
+    await editImage(event);
+    return;
+  }
   if (state.mode !== 'generation') return;
   if (state.controller) return;
 
@@ -1340,6 +1526,7 @@ els.themeToggle.addEventListener('click', () => {
 
 els.generationModeTab.addEventListener('click', () => switchMode('generation'));
 els.chatModeTab.addEventListener('click', () => switchMode('chat'));
+els.editModeTab.addEventListener('click', () => switchMode('edit'));
 
 els.rememberKey.addEventListener('change', persistApiKey);
 els.apiKey.addEventListener('change', persistApiKey);
@@ -1463,6 +1650,48 @@ els.imageUrlInput.addEventListener('keydown', (event) => {
 els.sendChatButton.addEventListener('click', sendChatMessage);
 els.clearChatButton.addEventListener('click', clearChat);
 
+els.editModelName.addEventListener('change', () => {
+  safeStorageSet(STORAGE_KEYS.editModel, els.editModelName.value.trim());
+});
+els.editButton.addEventListener('click', editImage);
+els.cancelEditButton.addEventListener('click', cancelGeneration);
+els.editUploadZone.addEventListener('click', (event) => {
+  if (!event.target.closest('button')) els.editImageFileInput.click();
+});
+els.editImageFileInput.addEventListener('change', () => {
+  setEditImage(els.editImageFileInput.files?.[0]);
+});
+els.removeEditImage.addEventListener('click', clearEditImage);
+['dragenter', 'dragover'].forEach((eventName) => {
+  els.editUploadZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    els.editUploadZone.classList.add('drag-active');
+  });
+});
+['dragleave', 'drop'].forEach((eventName) => {
+  els.editUploadZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    els.editUploadZone.classList.remove('drag-active');
+  });
+});
+els.editUploadZone.addEventListener('drop', (event) => {
+  const file = event.dataTransfer.files?.[0];
+  if (file) setEditImage(file);
+});
+
+const editHints = {
+  background: '保留主体、姿态、身份特征和原有细节，只把背景替换为：',
+  style: '保留主体和构图，把整体视觉风格改为：',
+  remove: '保留画面其他内容，移除图片中的：',
+};
+document.querySelectorAll('[data-edit-hint]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const hint = editHints[button.dataset.editHint];
+    els.editPrompt.value = `${hint || ''}${els.editPrompt.value.trim()}`;
+    els.editPrompt.focus();
+  });
+});
+
 ['dragenter', 'dragover'].forEach((eventName) => {
   els.chatDropZone.addEventListener(eventName, (event) => {
     event.preventDefault();
@@ -1499,6 +1728,8 @@ document.addEventListener('keydown', (event) => {
     event.preventDefault();
     if (state.mode === 'chat') {
       sendChatMessage();
+    } else if (state.mode === 'edit') {
+      editImage();
     } else if (!state.controller) {
       els.form.requestSubmit();
     }
