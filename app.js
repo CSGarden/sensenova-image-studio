@@ -5,6 +5,9 @@ const STORAGE_KEYS = {
   rememberKey: 'nova-canvas-remember-key',
   apiKey: 'nova-canvas-api-key',
   theme: 'nova-canvas-theme',
+  chatModel: 'nova-canvas-chat-model',
+  chatSystem: 'nova-canvas-chat-system',
+  chatReasoning: 'nova-canvas-chat-reasoning',
 };
 
 const STYLE_SUFFIXES = {
@@ -150,6 +153,14 @@ const TEMPLATE_LIBRARY = [
   },
 ];
 
+const CHAT_TASKS = {
+  describe: '请客观、详细地描述所附图片。先概括整体内容，再分别说明主体、环境、构图、光线、色彩、材质、可见文字和可能被忽略的细节。明确区分可见事实与合理推断。',
+  ocr: '请提取所附图片中所有可见文字，尽量保持原有阅读顺序、段落和表格结构。对无法确认的字符使用 [不清晰] 标记，不要自行补写。最后简要总结文字内容。',
+  edit_prompt:
+    '请分析所附原图，并把我的修改意图整理成一份可直接交给图片生成模型的详细中文改图提示词。提示词需要明确：必须保留的主体与身份特征、需要修改的区域、构图与镜头、光线、色彩、材质、背景、文字要求，以及必须避免的变化。注意：只输出可执行的改图提示词和一行负面约束，不要声称已经修改图片。我的修改意图是：',
+  critique: '请从构图、视觉层级、色彩、光线、字体与信息可读性、主体表现六个方面点评所附图片。每一项先说明现状，再给出具体可执行的改进建议，最后按优先级列出最值得先改的三项。',
+};
+
 const LOADING_STEPS = [
   ['正在理解你的画面', '分析主体、信息层级与视觉意图。'],
   ['正在搭建构图骨架', '安排焦点、留白和画面阅读动线。'],
@@ -203,6 +214,34 @@ const els = {
   templateSearch: document.querySelector('#templateSearch'),
   templateFilters: document.querySelector('#templateFilters'),
   templateLibraryGrid: document.querySelector('#templateLibraryGrid'),
+  generationModeTab: document.querySelector('#generationModeTab'),
+  chatModeTab: document.querySelector('#chatModeTab'),
+  generationControls: document.querySelector('#generationControls'),
+  chatControls: document.querySelector('#chatControls'),
+  generationCanvas: document.querySelector('#generationCanvas'),
+  chatCanvas: document.querySelector('#chatCanvas'),
+  workspaceEyebrow: document.querySelector('#workspaceEyebrow'),
+  workspaceTitle: document.querySelector('#workspaceTitle'),
+  workspaceDescription: document.querySelector('#workspaceDescription'),
+  workspaceBadge: document.querySelector('#workspaceBadge'),
+  chatModelName: document.querySelector('#chatModelName'),
+  chatSystemPrompt: document.querySelector('#chatSystemPrompt'),
+  reasoningControl: document.querySelector('#reasoningControl'),
+  chatTaskGrid: document.querySelector('#chatTaskGrid'),
+  clearChatButton: document.querySelector('#clearChatButton'),
+  chatMessages: document.querySelector('#chatMessages'),
+  chatEmptyState: document.querySelector('#chatEmptyState'),
+  chatDropZone: document.querySelector('#chatDropZone'),
+  attachmentList: document.querySelector('#attachmentList'),
+  imageUrlRow: document.querySelector('#imageUrlRow'),
+  imageUrlInput: document.querySelector('#imageUrlInput'),
+  addImageUrlButton: document.querySelector('#addImageUrlButton'),
+  uploadImageButton: document.querySelector('#uploadImageButton'),
+  imageFileInput: document.querySelector('#imageFileInput'),
+  toggleImageUrlButton: document.querySelector('#toggleImageUrlButton'),
+  chatInput: document.querySelector('#chatInput'),
+  sendChatButton: document.querySelector('#sendChatButton'),
+  chatMeta: document.querySelector('#chatMeta'),
 };
 
 const state = {
@@ -216,6 +255,12 @@ const state = {
   toastTimer: null,
   templateCategory: 'all',
   templateReturnFocus: null,
+  mode: 'generation',
+  chatMessages: [],
+  chatAttachments: [],
+  chatController: null,
+  chatReasoning: 'medium',
+  attachmentId: 0,
 };
 
 function safeStorageGet(key) {
@@ -248,16 +293,22 @@ function restorePreferences() {
   const storedPrompt = safeStorageGet(STORAGE_KEYS.prompt);
   const remembersKey = safeStorageGet(STORAGE_KEYS.rememberKey) === 'true';
   const storedTheme = safeStorageGet(STORAGE_KEYS.theme);
+  const storedChatModel = safeStorageGet(STORAGE_KEYS.chatModel);
+  const storedChatSystem = safeStorageGet(STORAGE_KEYS.chatSystem);
+  const storedChatReasoning = safeStorageGet(STORAGE_KEYS.chatReasoning);
 
   if (storedBaseUrl) els.baseUrl.value = storedBaseUrl;
   if (storedModel) els.modelName.value = storedModel;
   if (storedPrompt) els.prompt.value = storedPrompt;
+  if (storedChatModel) els.chatModelName.value = storedChatModel;
+  if (storedChatSystem) els.chatSystemPrompt.value = storedChatSystem;
 
   els.rememberKey.checked = remembersKey;
   if (remembersKey) els.apiKey.value = safeStorageGet(STORAGE_KEYS.apiKey) || '';
 
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
   applyTheme(storedTheme || (prefersDark ? 'dark' : 'light'));
+  setChatReasoning(storedChatReasoning || 'medium');
 
   updatePromptCount();
   updateRatioPreview();
@@ -268,6 +319,439 @@ function applyTheme(theme) {
   document.documentElement.dataset.colorMode = resolved;
   els.themeToggle?.setAttribute('aria-label', resolved === 'dark' ? '切换浅色模式' : '切换深色模式');
   els.themeToggle?.setAttribute('title', resolved === 'dark' ? '切换浅色模式' : '切换深色模式');
+}
+
+function switchMode(mode) {
+  const isChat = mode === 'chat';
+  state.mode = isChat ? 'chat' : 'generation';
+
+  els.generationControls.hidden = isChat;
+  els.generationCanvas.hidden = isChat;
+  els.chatControls.hidden = !isChat;
+  els.chatCanvas.hidden = !isChat;
+  els.generationModeTab.classList.toggle('selected', !isChat);
+  els.chatModeTab.classList.toggle('selected', isChat);
+  els.generationModeTab.setAttribute('aria-selected', String(!isChat));
+  els.chatModeTab.setAttribute('aria-selected', String(isChat));
+
+  els.workspaceEyebrow.textContent = isChat ? 'VISION CHAT' : 'SETTINGS';
+  els.workspaceTitle.textContent = isChat ? '配置多模态对话' : '配置图片生成';
+  els.workspaceDescription.textContent = isChat
+    ? '使用 Flash-Lite 进行文本对话、图片理解和改图提示词设计。'
+    : '连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。';
+  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : 'Images API';
+
+  window.requestAnimationFrame(() => {
+    if (isChat) els.chatInput.focus({ preventScroll: true });
+  });
+}
+
+function setChatReasoning(effort) {
+  const validEfforts = new Set(['none', 'low', 'medium', 'high']);
+  state.chatReasoning = validEfforts.has(effort) ? effort : 'medium';
+  els.reasoningControl.querySelectorAll('[data-effort]').forEach((button) => {
+    const selected = button.dataset.effort === state.chatReasoning;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  safeStorageSet(STORAGE_KEYS.chatReasoning, state.chatReasoning);
+}
+
+function buildChatEndpoint(input) {
+  const raw = input.trim().replace(/\/+$/, '');
+  if (!raw) throw new Error('请输入 new-api 地址');
+
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('new-api 地址格式不正确，请填写完整的 http(s) 地址');
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('new-api 地址必须使用 http 或 https');
+  }
+
+  if (/\/chat\/completions$/i.test(parsed.pathname)) return raw;
+  if (/\/v1$/i.test(parsed.pathname)) return `${raw}/chat/completions`;
+  return `${raw}/v1/chat/completions`;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error(`无法读取 ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function addImageFiles(fileList) {
+  const supportedTypes = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+  const files = [...fileList];
+
+  for (const file of files) {
+    if (state.chatAttachments.length >= 4) {
+      showToast('单次消息最多添加 4 张图片', 'error');
+      break;
+    }
+    if (!supportedTypes.has(file.type)) {
+      showToast(`${file.name} 不是支持的图片格式`, 'error');
+      continue;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast(`${file.name} 超过 10 MB，请压缩后重试`, 'error');
+      continue;
+    }
+
+    try {
+      const src = await readFileAsDataUrl(file);
+      state.attachmentId += 1;
+      state.chatAttachments.push({
+        id: state.attachmentId,
+        kind: 'file',
+        src,
+        name: file.name,
+        mime: file.type,
+      });
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+  }
+
+  renderAttachments();
+}
+
+function addImageUrl() {
+  if (state.chatAttachments.length >= 4) {
+    showToast('单次消息最多添加 4 张图片', 'error');
+    return;
+  }
+
+  const value = els.imageUrlInput.value.trim();
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    showToast('请输入完整的图片 URL', 'error');
+    return;
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    showToast('图片 URL 必须使用 http 或 https', 'error');
+    return;
+  }
+
+  state.attachmentId += 1;
+  state.chatAttachments.push({
+    id: state.attachmentId,
+    kind: 'url',
+    src: value,
+    name: parsed.pathname.split('/').pop() || parsed.hostname,
+    mime: 'image/url',
+  });
+  els.imageUrlInput.value = '';
+  els.imageUrlRow.hidden = true;
+  els.toggleImageUrlButton.classList.remove('active');
+  renderAttachments();
+}
+
+function removeAttachment(id) {
+  state.chatAttachments = state.chatAttachments.filter((attachment) => attachment.id !== id);
+  renderAttachments();
+}
+
+function renderAttachments() {
+  els.attachmentList.replaceChildren();
+  els.attachmentList.hidden = state.chatAttachments.length === 0;
+
+  state.chatAttachments.forEach((attachment) => {
+    const item = document.createElement('div');
+    item.className = 'attachment-item';
+    const image = document.createElement('img');
+    image.src = attachment.src;
+    image.alt = attachment.name;
+    image.referrerPolicy = 'no-referrer';
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'attachment-remove';
+    remove.setAttribute('aria-label', `移除 ${attachment.name}`);
+    remove.textContent = '×';
+    remove.addEventListener('click', () => removeAttachment(attachment.id));
+
+    const source = document.createElement('span');
+    source.className = 'attachment-source';
+    source.textContent = attachment.kind === 'file' ? attachment.name : 'URL';
+    item.append(image, remove, source);
+    els.attachmentList.append(item);
+  });
+}
+
+function formatChatTime(timestamp) {
+  return new Date(timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function transferToGeneration(text) {
+  els.prompt.value = text;
+  updatePromptCount();
+  safeStorageSet(STORAGE_KEYS.prompt, text);
+  switchMode('generation');
+  window.requestAnimationFrame(() => {
+    els.prompt.focus();
+    els.prompt.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+  showToast('已将回答转为图片生成提示词');
+}
+
+function renderChatMessages({ thinking = false } = {}) {
+  els.chatMessages.replaceChildren();
+  els.chatEmptyState.hidden = state.chatMessages.length > 0 || thinking;
+  if (!els.chatEmptyState.hidden) els.chatMessages.append(els.chatEmptyState);
+
+  state.chatMessages.forEach((message) => {
+    const article = document.createElement('article');
+    article.className = `chat-message ${message.role}${message.error ? ' error' : ''}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = message.role === 'assistant' ? 'AI' : '你';
+
+    const body = document.createElement('div');
+    body.className = 'chat-message-body';
+    const header = document.createElement('div');
+    header.className = 'chat-message-header';
+    const author = document.createElement('strong');
+    author.textContent = message.role === 'assistant' ? 'SenseNova Flash-Lite' : '你';
+    const time = document.createElement('time');
+    time.textContent = formatChatTime(message.createdAt);
+    header.append(author, time);
+    if (message.usage) {
+      const usage = document.createElement('span');
+      usage.className = 'chat-usage';
+      usage.textContent = `${message.usage.total_tokens ?? 0} tokens`;
+      header.append(usage);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'chat-message-content';
+    if (message.images?.length) {
+      const imageGrid = document.createElement('div');
+      imageGrid.className = 'message-image-grid';
+      message.images.forEach((src, index) => {
+        const image = document.createElement('img');
+        image.src = src;
+        image.alt = `输入图片 ${index + 1}`;
+        image.referrerPolicy = 'no-referrer';
+        imageGrid.append(image);
+      });
+      content.append(imageGrid);
+    }
+    const text = document.createElement('div');
+    text.textContent = message.text;
+    content.append(text);
+
+    body.append(header, content);
+    if (message.role === 'assistant' && !message.error) {
+      const actions = document.createElement('div');
+      actions.className = 'assistant-message-actions';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.textContent = '复制回答';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(message.text);
+          showToast('回答已复制');
+        } catch {
+          showToast('浏览器未允许复制', 'error');
+        }
+      });
+      const transfer = document.createElement('button');
+      transfer.type = 'button';
+      transfer.textContent = '转到图片生成';
+      transfer.addEventListener('click', () => transferToGeneration(message.text));
+      actions.append(copy, transfer);
+      body.append(actions);
+    }
+
+    article.append(avatar, body);
+    els.chatMessages.append(article);
+  });
+
+  if (thinking) {
+    const article = document.createElement('article');
+    article.className = 'chat-message assistant';
+    const avatar = document.createElement('div');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = 'AI';
+    const body = document.createElement('div');
+    body.className = 'chat-message-body';
+    const thinkingNode = document.createElement('div');
+    thinkingNode.className = 'chat-message-content chat-thinking';
+    thinkingNode.innerHTML = '<svg class="spinner" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-opacity=".25" stroke-width="2"></circle><path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg><span>正在理解并组织回答…</span>';
+    body.append(thinkingNode);
+    article.append(avatar, body);
+    els.chatMessages.append(article);
+  }
+
+  els.clearChatButton.disabled = state.chatMessages.length === 0 && !thinking;
+  window.requestAnimationFrame(() => {
+    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+  });
+}
+
+function extractChatContent(payload) {
+  const content = payload?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((block) => block?.text || block?.content || '')
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+  }
+  return '';
+}
+
+function setChatBusy(isBusy) {
+  els.sendChatButton.disabled = isBusy;
+  els.sendChatButton.querySelector('span').textContent = isBusy ? '生成中' : '发送';
+  if (isBusy) els.chatMeta.textContent = 'REQUESTING…';
+}
+
+async function sendChatMessage() {
+  if (state.chatController) return;
+
+  const apiKey = els.apiKey.value.trim();
+  const model = els.chatModelName.value.trim();
+  const inputText = els.chatInput.value.trim();
+  if (!apiKey) {
+    els.apiKey.focus();
+    showToast('请输入 API Key', 'error');
+    return;
+  }
+  if (!model) {
+    els.chatModelName.focus();
+    showToast('请输入对话模型名称', 'error');
+    return;
+  }
+  if (!inputText && !state.chatAttachments.length) {
+    els.chatInput.focus();
+    showToast('请输入问题或添加图片', 'error');
+    return;
+  }
+
+  let endpoint;
+  try {
+    endpoint = buildChatEndpoint(els.baseUrl.value);
+  } catch (error) {
+    els.baseUrl.focus();
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const textForApi = inputText || '请客观、详细地描述这些图片。';
+  const attachments = state.chatAttachments.map((attachment) => ({ ...attachment }));
+  const content = [{ type: 'text', text: textForApi }];
+  attachments.forEach((attachment) => {
+    content.push({ type: 'image_url', image_url: { url: attachment.src } });
+  });
+
+  const userMessage = {
+    role: 'user',
+    content: attachments.length ? content : textForApi,
+    text: textForApi,
+    images: attachments.map((attachment) => attachment.src),
+    createdAt: Date.now(),
+  };
+  state.chatMessages.push(userMessage);
+  state.chatAttachments = [];
+  els.chatInput.value = '';
+  renderAttachments();
+  renderChatMessages({ thinking: true });
+  setChatBusy(true);
+  persistConnectionSettings();
+  persistApiKey();
+  safeStorageSet(STORAGE_KEYS.chatModel, model);
+  safeStorageSet(STORAGE_KEYS.chatSystem, els.chatSystemPrompt.value);
+
+  const apiMessages = [];
+  const systemPrompt = els.chatSystemPrompt.value.trim();
+  if (systemPrompt) apiMessages.push({ role: 'system', content: systemPrompt });
+  state.chatMessages.forEach((message) => {
+    if (!message.error) apiMessages.push({ role: message.role, content: message.content });
+  });
+
+  state.chatController = new AbortController();
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: apiMessages,
+        stream: false,
+        max_tokens: 4096,
+        reasoning_effort: state.chatReasoning,
+      }),
+      signal: state.chatController.signal,
+    });
+
+    const raw = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw new Error(raw ? `接口返回了非 JSON 内容：${raw.slice(0, 160)}` : '接口返回内容为空');
+    }
+    if (!response.ok) throw new Error(extractError(payload, response.status));
+
+    const assistantText = extractChatContent(payload);
+    if (!assistantText) throw new Error('接口请求成功，但没有返回可显示的文本内容');
+
+    state.chatMessages.push({
+      role: 'assistant',
+      content: assistantText,
+      text: assistantText,
+      createdAt: Date.now(),
+      usage: payload.usage,
+    });
+    els.chatMeta.textContent = payload.usage?.total_tokens
+      ? `${payload.usage.total_tokens} TOKENS`
+      : 'COMPLETED';
+  } catch (error) {
+    const message =
+      error.name === 'AbortError'
+        ? '本次对话请求已取消。'
+        : error instanceof TypeError && /fetch/i.test(error.message)
+          ? '无法连接接口。请检查 new-api 地址及 CORS 配置；本地 data URL 若被代理拒绝，可改用公开图片 URL。'
+          : error.message || '对话请求失败，请稍后重试。';
+    state.chatMessages.push({
+      role: 'assistant',
+      content: '',
+      text: message,
+      createdAt: Date.now(),
+      error: true,
+    });
+    els.chatMeta.textContent = 'REQUEST FAILED';
+  } finally {
+    state.chatController = null;
+    setChatBusy(false);
+    renderChatMessages();
+  }
+}
+
+function clearChat() {
+  if (state.chatController) state.chatController.abort();
+  state.chatMessages = [];
+  state.chatAttachments = [];
+  els.chatInput.value = '';
+  renderAttachments();
+  renderChatMessages();
+  els.chatMeta.textContent = 'READY';
 }
 
 function persistConnectionSettings() {
@@ -745,6 +1229,7 @@ function showError(message) {
 
 async function generateImages(event) {
   event?.preventDefault();
+  if (state.mode !== 'generation') return;
   if (state.controller) return;
 
   const apiKey = els.apiKey.value.trim();
@@ -853,10 +1338,19 @@ els.themeToggle.addEventListener('click', () => {
   safeStorageSet(STORAGE_KEYS.theme, nextTheme);
 });
 
+els.generationModeTab.addEventListener('click', () => switchMode('generation'));
+els.chatModeTab.addEventListener('click', () => switchMode('chat'));
+
 els.rememberKey.addEventListener('change', persistApiKey);
 els.apiKey.addEventListener('change', persistApiKey);
 els.baseUrl.addEventListener('change', persistConnectionSettings);
 els.modelName.addEventListener('change', persistConnectionSettings);
+els.chatModelName.addEventListener('change', () => {
+  safeStorageSet(STORAGE_KEYS.chatModel, els.chatModelName.value.trim());
+});
+els.chatSystemPrompt.addEventListener('change', () => {
+  safeStorageSet(STORAGE_KEYS.chatSystem, els.chatSystemPrompt.value);
+});
 els.prompt.addEventListener('input', updatePromptCount);
 els.prompt.addEventListener('change', () => safeStorageSet(STORAGE_KEYS.prompt, els.prompt.value));
 
@@ -931,6 +1425,60 @@ els.quantityControl.addEventListener('click', (event) => {
   if (button) setCount(Number(button.dataset.count));
 });
 
+els.reasoningControl.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-effort]');
+  if (button) setChatReasoning(button.dataset.effort);
+});
+
+els.chatTaskGrid.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-chat-task]');
+  if (!button) return;
+  const task = CHAT_TASKS[button.dataset.chatTask];
+  if (!task) return;
+  els.chatInput.value = task;
+  els.chatInput.focus();
+  els.chatInput.setSelectionRange(els.chatInput.value.length, els.chatInput.value.length);
+});
+
+els.uploadImageButton.addEventListener('click', () => els.imageFileInput.click());
+els.imageFileInput.addEventListener('change', async () => {
+  await addImageFiles(els.imageFileInput.files);
+  els.imageFileInput.value = '';
+});
+
+els.toggleImageUrlButton.addEventListener('click', () => {
+  const willOpen = els.imageUrlRow.hidden;
+  els.imageUrlRow.hidden = !willOpen;
+  els.toggleImageUrlButton.classList.toggle('active', willOpen);
+  if (willOpen) window.requestAnimationFrame(() => els.imageUrlInput.focus());
+});
+els.addImageUrlButton.addEventListener('click', addImageUrl);
+els.imageUrlInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    addImageUrl();
+  }
+});
+
+els.sendChatButton.addEventListener('click', sendChatMessage);
+els.clearChatButton.addEventListener('click', clearChat);
+
+['dragenter', 'dragover'].forEach((eventName) => {
+  els.chatDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    if ([...event.dataTransfer.types].includes('Files')) els.chatDropZone.classList.add('drag-active');
+  });
+});
+['dragleave', 'drop'].forEach((eventName) => {
+  els.chatDropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    els.chatDropZone.classList.remove('drag-active');
+  });
+});
+els.chatDropZone.addEventListener('drop', async (event) => {
+  if (event.dataTransfer.files?.length) await addImageFiles(event.dataTransfer.files);
+});
+
 els.form.addEventListener('submit', generateImages);
 els.cancelButton.addEventListener('click', cancelGeneration);
 els.clearButton.addEventListener('click', clearResults);
@@ -949,7 +1497,11 @@ document.addEventListener('keydown', (event) => {
 
   if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
     event.preventDefault();
-    if (!state.controller) els.form.requestSubmit();
+    if (state.mode === 'chat') {
+      sendChatMessage();
+    } else if (!state.controller) {
+      els.form.requestSubmit();
+    }
   }
 });
 

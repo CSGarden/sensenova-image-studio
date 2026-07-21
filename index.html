@@ -50,13 +50,24 @@
 
       <main class="studio-layout">
         <aside class="control-panel" aria-label="生成设置">
+          <div class="workspace-switcher" role="tablist" aria-label="工作模式">
+            <button class="workspace-tab selected" id="generationModeTab" type="button" role="tab" aria-selected="true">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 16 11.75v-7.5a1.75 1.75 0 0 0-1.75-1.75H1.75Zm12.5 1.5a.25.25 0 0 1 .25.25v5.19l-2.22-2.22a.75.75 0 0 0-1.06 0l-2.47 2.47-1.47-1.47a.75.75 0 0 0-1.06 0L1.5 12.94V4.25A.25.25 0 0 1 1.75 4h12.5ZM2.56 12l4.19-4.19 1.47 1.47a.75.75 0 0 0 1.06 0l2.47-2.47 2.75 2.75v2.19a.25.25 0 0 1-.25.25H2.56Z" /></svg>
+              图片生成
+            </button>
+            <button class="workspace-tab" id="chatModeTab" type="button" role="tab" aria-selected="false">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 1.5h12.5c.966 0 1.75.784 1.75 1.75v8.5a1.75 1.75 0 0 1-1.75 1.75H7.92l-3.83 2.298A.75.75 0 0 1 3 15.155V13.5H1.75A1.75 1.75 0 0 1 0 11.75v-8.5C0 2.284.784 1.5 1.75 1.5Zm0 1.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v1.08l2.83-1.698A.75.75 0 0 1 7.715 12h6.535a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75Z" /></svg>
+              多模态对话
+            </button>
+          </div>
+
           <div class="panel-intro">
             <div>
-                <span class="eyebrow">SETTINGS</span>
-                <h1>配置图片生成</h1>
-                <p>连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。</p>
+                <span class="eyebrow" id="workspaceEyebrow">SETTINGS</span>
+                <h1 id="workspaceTitle">配置图片生成</h1>
+                <p id="workspaceDescription">连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。</p>
               </div>
-              <span class="version-tag">Images API</span>
+              <span class="version-tag" id="workspaceBadge">Images API</span>
           </div>
 
           <form id="generationForm">
@@ -109,6 +120,7 @@
               </div>
             </section>
 
+            <div id="generationControls">
             <section class="form-section prompt-section">
               <div class="section-heading">
                 <label for="prompt">画面描述</label>
@@ -245,10 +257,64 @@
               <button class="cancel-button" id="cancelButton" type="button" hidden>取消本次生成</button>
                 <p class="action-note">部分模型返回的图片链接具有时效，请在生成后及时下载。</p>
             </div>
+            </div>
+
+            <div class="chat-controls" id="chatControls" hidden>
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="chatModelName">对话模型</label>
+                  <span class="version-tag">Multimodal</span>
+                </div>
+                <div class="input-shell compact-input-shell">
+                  <input id="chatModelName" value="sensenova-6.7-flash-lite" spellcheck="false" />
+                </div>
+                <p class="field-description">支持文本对话、图片理解和多轮追问。</p>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="chatSystemPrompt">系统提示词</label>
+                </div>
+                <div class="textarea-shell compact-textarea-shell">
+                  <textarea id="chatSystemPrompt" rows="4">你是一个客观、细致的多模态视觉助手。分析图片时区分可见事实与推断；生成改图提示词时，保留用户指定的主体与关键细节，并明确说明构图、光线、材质、色彩和需要修改的区域。</textarea>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <span>推理强度</span>
+                  <span class="section-hint">reasoning_effort</span>
+                </div>
+                <div class="reasoning-control" id="reasoningControl" role="group" aria-label="推理强度">
+                  <button type="button" data-effort="none">关闭</button>
+                  <button type="button" data-effort="low">低</button>
+                  <button type="button" class="selected" data-effort="medium">中</button>
+                  <button type="button" data-effort="high">高</button>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <span>快捷任务</span>
+                  <span class="section-hint">自动填入输入框</span>
+                </div>
+                <div class="chat-task-grid" id="chatTaskGrid">
+                  <button type="button" data-chat-task="describe">详细描述图片</button>
+                  <button type="button" data-chat-task="ocr">提取图片文字</button>
+                  <button type="button" data-chat-task="edit_prompt">生成改图提示词</button>
+                  <button type="button" data-chat-task="critique">构图与视觉点评</button>
+                </div>
+              </section>
+
+              <div class="capability-callout">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm.75 2.25a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" /></svg>
+                <p><strong>能力说明</strong>Flash-Lite 能理解图片并生成改图方案，但不会直接返回修改后的图片。可将回答一键转到图片生成器重新生成。</p>
+              </div>
+            </div>
           </form>
         </aside>
 
-        <section class="canvas-panel" aria-label="生成结果">
+        <section class="canvas-panel" id="generationCanvas" aria-label="生成结果">
           <div class="canvas-toolbar">
             <div class="canvas-title">
               <span class="eyebrow">LIVE OUTPUT</span>
@@ -323,6 +389,74 @@
             </div>
             <span id="generationMeta">READY FOR INPUT</span>
           </div>
+        </section>
+
+        <section class="chat-panel" id="chatCanvas" aria-label="多模态对话" hidden>
+          <header class="chat-toolbar">
+            <div>
+              <span class="eyebrow">MULTIMODAL CHAT</span>
+              <div class="title-line">
+                <h2>SenseNova 6.7 Flash-Lite</h2>
+                <span class="result-count">VISION</span>
+              </div>
+            </div>
+            <button class="toolbar-button" id="clearChatButton" type="button" disabled>清空对话</button>
+          </header>
+
+          <div class="chat-messages" id="chatMessages" aria-live="polite">
+            <div class="chat-empty-state" id="chatEmptyState">
+              <div class="empty-visual" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3v-3A2.5 2.5 0 0 1 4 13.5v-8Z"></path>
+                  <circle cx="9" cy="9" r="1"></circle><circle cx="12" cy="9" r="1"></circle><circle cx="15" cy="9" r="1"></circle>
+                </svg>
+              </div>
+              <h3>开始多模态对话</h3>
+              <p>输入问题，或添加图片后让 Flash-Lite 描述内容、提取文字、分析设计并生成改图提示词。</p>
+              <div class="chat-capability-list">
+                <span>连续文本对话</span><span>图片 URL</span><span>本地图片</span><span>最多 4 张</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-composer-area" id="chatDropZone">
+            <div class="attachment-list" id="attachmentList" hidden></div>
+
+            <div class="image-url-row" id="imageUrlRow" hidden>
+              <div class="input-shell">
+                <span class="input-icon" aria-hidden="true">↗</span>
+                <input id="imageUrlInput" type="url" placeholder="https://example.com/image.png" autocomplete="off" />
+              </div>
+              <button class="toolbar-button primary" id="addImageUrlButton" type="button">添加</button>
+            </div>
+
+            <div class="chat-composer">
+              <textarea id="chatInput" rows="3" placeholder="输入问题，或描述你希望如何调整图片……"></textarea>
+              <div class="chat-composer-actions">
+                <div class="attachment-actions">
+                  <button class="composer-icon-button" id="uploadImageButton" type="button" title="上传图片">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 16 11.75v-7.5a1.75 1.75 0 0 0-1.75-1.75H1.75Zm12.5 1.5a.25.25 0 0 1 .25.25v5.19l-2.22-2.22a.75.75 0 0 0-1.06 0l-2.47 2.47-1.47-1.47a.75.75 0 0 0-1.06 0L1.5 12.94V4.25A.25.25 0 0 1 1.75 4h12.5ZM2.56 12l4.19-4.19 1.47 1.47a.75.75 0 0 0 1.06 0l2.47-2.47 2.75 2.75v2.19a.25.25 0 0 1-.25.25H2.56Z" /></svg>
+                    <span>上传图片</span>
+                  </button>
+                  <input id="imageFileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden />
+                  <button class="composer-icon-button" id="toggleImageUrlButton" type="button" title="添加图片 URL">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M7.775 3.275 9.25 1.8a3.818 3.818 0 0 1 5.4 5.4l-2.5 2.5a3.818 3.818 0 0 1-5.4 0 .75.75 0 0 1 1.06-1.06 2.318 2.318 0 0 0 3.28 0l2.5-2.5a2.318 2.318 0 0 0-3.28-3.28L8.835 4.335a.75.75 0 0 1-1.06-1.06Zm.415 3.14a2.318 2.318 0 0 0-3.28 0l-2.5 2.5a2.318 2.318 0 0 0 3.28 3.28l1.475-1.475a.75.75 0 0 1 1.06 1.06L6.75 13.255a3.818 3.818 0 0 1-5.4-5.4l2.5-2.5a3.818 3.818 0 0 1 5.4 0 .75.75 0 0 1-1.06 1.06Z" /></svg>
+                    <span>图片 URL</span>
+                  </button>
+                </div>
+                <button class="chat-send-button" id="sendChatButton" type="button">
+                  <span>发送</span>
+                  <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M.989 15.734a.75.75 0 0 1-.974-.94l2.694-7.546a.75.75 0 0 1 .706-.498H8.5a.75.75 0 0 1 0 1.5H3.944l-1.91 5.348L13.79 8 2.034 2.402l.827 2.316a.75.75 0 1 1-1.412.504L.015 1.206a.75.75 0 0 1 .974-.94l14.25 6.786a.75.75 0 0 1 0 1.354l-14.25 7.328Z" /></svg>
+                </button>
+              </div>
+            </div>
+            <p class="chat-composer-note">可拖拽 PNG、JPEG、GIF、WebP；本地图片会作为 data URL 发送。Enter 换行，Ctrl/⌘ + Enter 发送。</p>
+          </div>
+
+          <footer class="canvas-footer">
+            <div class="footer-status"><span class="mini-led"></span><span>CHAT COMPLETIONS</span><span class="footer-divider"></span><span>IMAGE UNDERSTANDING</span></div>
+            <span id="chatMeta">READY</span>
+          </footer>
         </section>
       </main>
     </div>

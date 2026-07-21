@@ -8,6 +8,7 @@
 - 默认模型是 `sensenova-u1-fast`，模型名称可以自由修改。
 - 内置 SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
 - 提示词模板库包含广告、短视频、漫画、动作戏、口播 B-roll 和教学流程等分镜模板。
+- 新增 `sensenova-6.7-flash-lite` 多模态对话模式，支持连续文本对话、图片 URL 和本地图片理解。
 
 ## 使用
 
@@ -40,6 +41,40 @@ Content-Type: application/json
 ```
 
 页面兼容 `data[].url`、`data[].b64_json` 和常见的 `images[]` 返回结构。
+
+## 多模态对话
+
+多模态模式调用：
+
+```text
+POST {API_BASE_URL}/chat/completions
+```
+
+图片按照 OpenAI 兼容格式放入 `image_url` content 块：
+
+```json
+{
+  "model": "sensenova-6.7-flash-lite",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "请描述这张图片" },
+        {
+          "type": "image_url",
+          "image_url": { "url": "https://example.com/image.png" }
+        }
+      ]
+    }
+  ],
+  "stream": false,
+  "reasoning_effort": "medium"
+}
+```
+
+支持 PNG、JPEG、GIF、WebP，单次消息最多添加 4 张图片。本地文件会转换成 data URL；如果 new-api 不接受 data URL，请改用可公开访问的图片 URL。
+
+Flash-Lite 的官方能力是图片理解与分析，不会直接返回修改后的图片。页面提供“生成改图提示词”和“转到图片生成”两步工作流，用生成模型重新创作，但这不等同于像素级原图编辑。
 
 ## 安全提示
 
