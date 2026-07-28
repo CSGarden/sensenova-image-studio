@@ -13,10 +13,47 @@ const STORAGE_KEYS = {
   agnesBaseUrl: 'nova-canvas-agnes-base-url',
   rememberAgnesKey: 'nova-canvas-remember-agnes-key',
   agnesApiKey: 'nova-canvas-agnes-api-key',
+  agnes21Size: 'nova-canvas-agnes21-size',
+  agnes21Ratio: 'nova-canvas-agnes21-ratio',
+  videoModel: 'nova-canvas-video-model',
+  videoPrompt: 'nova-canvas-video-prompt',
 };
 
 const AGNES_MODEL = 'agnes-image-2.0-flash';
 const AGNES_SIZES = new Set(['1024x768', '1024x1024', '768x1024']);
+
+const MODEL_CATALOG = {
+  generation: [
+    { id: 'sensenova-u1-fast', title: 'SenseNova U1 Fast', provider: 'SenseNova', badges: ['图片生成', '2K'] },
+    { id: 'agnes-image-2.0-flash', title: 'Agnes Image 2.0 Flash', provider: 'Agnes', badges: ['文生图', '图生图'] },
+    { id: 'agnes-image-2.1-flash', title: 'Agnes Image 2.1 Flash', provider: 'Agnes', badges: ['1K–4K', '复杂构图'] },
+  ],
+  edit: [
+    { id: 'agnes-image-2.0-flash', title: 'Agnes Image 2.0 Flash', provider: 'Agnes', badges: ['真实改图'] },
+    { id: 'agnes-image-2.1-flash', title: 'Agnes Image 2.1 Flash', provider: 'Agnes', badges: ['高清改图', '1K–4K'] },
+    { id: 'gpt-image-1', title: 'gpt-image-1', provider: 'OpenAI compatible', badges: ['/images/edits'] },
+  ],
+  video: [
+    { id: 'agnes-video-v2.0', title: 'Agnes Video V2.0', provider: 'Agnes', badges: ['文生视频', '图生视频'] },
+  ],
+};
+
+const AGNES_21_OUTPUTS = {
+  '1:1': ['1024×1024', '2048×2048', '3072×3072', '4096×4096'],
+  '3:4': ['864×1152', '1728×2304', '2592×3456', '3456×4608'],
+  '4:3': ['1152×864', '2304×1728', '3456×2592', '4608×3456'],
+  '16:9': ['1312×736', '2624×1472', '3936×2208', '5248×2944'],
+  '9:16': ['736×1312', '1472×2624', '2208×3936', '2944×5248'],
+  '2:3': ['832×1248', '1664×2496', '2496×3744', '3328×4992'],
+  '3:2': ['1248×832', '2496×1664', '3744×2496', '4992×3328'],
+  '21:9': ['1568×672', '3136×1344', '4704×2016', '6272×2688'],
+};
+
+const VIDEO_PROMPT_TEMPLATES = {
+  cinematic: '电影感镜头：主体动作自然连续，缓慢推进镜头，真实光影变化，稳定运镜，细节清晰，保持人物和场景一致性。',
+  product: '高端产品展示视频：产品外观严格一致，镜头环绕与细节特写结合，干净背景，柔和棚拍光，商业广告质感。',
+  social: '竖屏社交短视频：开场快速建立视觉焦点，动作节奏清楚，镜头运动流畅，适合 Reels、Shorts 与 TikTok。',
+};
 
 const STYLE_SUFFIXES = {
   none: '',
@@ -205,7 +242,13 @@ const els = {
   sizeSelectLabel: document.querySelector('#sizeSelectLabel'),
   sizeSelectMeta: document.querySelector('#sizeSelectMeta'),
   modelName: document.querySelector('#modelName'),
+  generationModelSelector: document.querySelector('#generationModelSelector'),
   generationModelDescription: document.querySelector('#generationModelDescription'),
+  standardSizeBlock: document.querySelector('#standardSizeBlock'),
+  agnes21Settings: document.querySelector('#agnes21Settings'),
+  agnes21SizeControl: document.querySelector('#agnes21SizeControl'),
+  agnes21RatioControl: document.querySelector('#agnes21RatioControl'),
+  agnes21OutputMeta: document.querySelector('#agnes21OutputMeta'),
   quantityControl: document.querySelector('#quantityControl'),
   generateButton: document.querySelector('#generateButton'),
   generateButtonText: document.querySelector('#generateButtonText'),
@@ -237,11 +280,14 @@ const els = {
   generationModeTab: document.querySelector('#generationModeTab'),
   chatModeTab: document.querySelector('#chatModeTab'),
   editModeTab: document.querySelector('#editModeTab'),
+  videoModeTab: document.querySelector('#videoModeTab'),
   generationControls: document.querySelector('#generationControls'),
   chatControls: document.querySelector('#chatControls'),
   editControls: document.querySelector('#editControls'),
+  videoControls: document.querySelector('#videoControls'),
   generationCanvas: document.querySelector('#generationCanvas'),
   chatCanvas: document.querySelector('#chatCanvas'),
+  videoCanvas: document.querySelector('#videoCanvas'),
   workspaceEyebrow: document.querySelector('#workspaceEyebrow'),
   workspaceTitle: document.querySelector('#workspaceTitle'),
   workspaceDescription: document.querySelector('#workspaceDescription'),
@@ -269,7 +315,12 @@ const els = {
   sendChatButton: document.querySelector('#sendChatButton'),
   chatMeta: document.querySelector('#chatMeta'),
   editModelName: document.querySelector('#editModelName'),
+  editModelSelector: document.querySelector('#editModelSelector'),
   editModelDescription: document.querySelector('#editModelDescription'),
+  editAgnes21Settings: document.querySelector('#editAgnes21Settings'),
+  editAgnes21SizeControl: document.querySelector('#editAgnes21SizeControl'),
+  editAgnes21RatioControl: document.querySelector('#editAgnes21RatioControl'),
+  editAgnes21OutputMeta: document.querySelector('#editAgnes21OutputMeta'),
   editUploadTransport: document.querySelector('#editUploadTransport'),
   editProtocolBadge: document.querySelector('#editProtocolBadge'),
   editCapabilityText: document.querySelector('#editCapabilityText'),
@@ -285,6 +336,39 @@ const els = {
   editButton: document.querySelector('#editButton'),
   editButtonText: document.querySelector('#editButtonText'),
   cancelEditButton: document.querySelector('#cancelEditButton'),
+  videoModelName: document.querySelector('#videoModelName'),
+  videoModelSelector: document.querySelector('#videoModelSelector'),
+  videoPrompt: document.querySelector('#videoPrompt'),
+  videoPromptCount: document.querySelector('#videoPromptCount'),
+  videoImageUrl: document.querySelector('#videoImageUrl'),
+  videoPresetGrid: document.querySelector('#videoPresetGrid'),
+  videoDurationControl: document.querySelector('#videoDurationControl'),
+  videoDurationMeta: document.querySelector('#videoDurationMeta'),
+  videoFrameRate: document.querySelector('#videoFrameRate'),
+  videoSeed: document.querySelector('#videoSeed'),
+  videoNegativePrompt: document.querySelector('#videoNegativePrompt'),
+  videoGenerateButton: document.querySelector('#videoGenerateButton'),
+  videoGenerateButtonText: document.querySelector('#videoGenerateButtonText'),
+  cancelVideoButton: document.querySelector('#cancelVideoButton'),
+  clearVideoButton: document.querySelector('#clearVideoButton'),
+  videoStatusBadge: document.querySelector('#videoStatusBadge'),
+  videoEmptyState: document.querySelector('#videoEmptyState'),
+  videoProgressState: document.querySelector('#videoProgressState'),
+  videoProgressTitle: document.querySelector('#videoProgressTitle'),
+  videoProgressMessage: document.querySelector('#videoProgressMessage'),
+  videoProgressBar: document.querySelector('#videoProgressBar'),
+  videoTaskId: document.querySelector('#videoTaskId'),
+  videoProgressPercent: document.querySelector('#videoProgressPercent'),
+  videoErrorState: document.querySelector('#videoErrorState'),
+  videoErrorMessage: document.querySelector('#videoErrorMessage'),
+  videoResult: document.querySelector('#videoResult'),
+  videoResultPlayer: document.querySelector('#videoResultPlayer'),
+  videoResultTitle: document.querySelector('#videoResultTitle'),
+  videoResultDetails: document.querySelector('#videoResultDetails'),
+  copyVideoUrlButton: document.querySelector('#copyVideoUrlButton'),
+  openVideoButton: document.querySelector('#openVideoButton'),
+  downloadVideoButton: document.querySelector('#downloadVideoButton'),
+  videoMeta: document.querySelector('#videoMeta'),
 };
 
 const state = {
@@ -307,6 +391,15 @@ const state = {
   editImageFile: null,
   editObjectUrl: null,
   agnesRoute: 'direct',
+  agnes21Size: '2K',
+  agnes21Ratio: '1:1',
+  videoWidth: 1152,
+  videoHeight: 768,
+  videoFrames: 121,
+  videoController: null,
+  videoPollTimer: null,
+  videoTask: null,
+  videoUrl: '',
 };
 
 function safeStorageGet(key) {
@@ -333,6 +426,132 @@ function safeStorageRemove(key) {
   }
 }
 
+function renderModelSelector(container, models, dataAttribute) {
+  container.replaceChildren();
+  models.forEach((model) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'model-option-card';
+    button.setAttribute(`data-${dataAttribute}`, model.id);
+    button.setAttribute('aria-pressed', 'false');
+    button.title = model.id;
+
+    const title = document.createElement('span');
+    title.className = 'model-option-title';
+    title.textContent = model.title;
+
+    const meta = document.createElement('span');
+    meta.className = 'model-option-meta';
+    const provider = document.createElement('small');
+    provider.className = `model-capability-badge provider-${model.provider.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    provider.textContent = model.provider;
+    meta.append(provider);
+    model.badges.forEach((badge) => {
+      const item = document.createElement('small');
+      item.className = 'model-capability-badge';
+      item.textContent = badge;
+      meta.append(item);
+    });
+
+    button.append(title, meta);
+    container.append(button);
+  });
+}
+
+function renderModelSelectors() {
+  renderModelSelector(els.generationModelSelector, MODEL_CATALOG.generation, 'generation-model');
+  renderModelSelector(els.editModelSelector, MODEL_CATALOG.edit, 'edit-model');
+  renderModelSelector(els.videoModelSelector, MODEL_CATALOG.video, 'video-model');
+}
+
+function updateAgnes21OutputMeta() {
+  const sizeIndex = Math.max(0, ['1K', '2K', '3K', '4K'].indexOf(state.agnes21Size));
+  const dimensions = AGNES_21_OUTPUTS[state.agnes21Ratio]?.[sizeIndex] || '';
+  const label = `${state.agnes21Size} · ${state.agnes21Ratio}${dimensions ? ` · ${dimensions}` : ''}`;
+  els.agnes21OutputMeta.textContent = label;
+  els.editAgnes21OutputMeta.textContent = label;
+}
+
+function setAgnes21Size(size, { persist = true } = {}) {
+  state.agnes21Size = ['1K', '2K', '3K', '4K'].includes(size) ? size : '2K';
+  document.querySelectorAll('[data-agnes-size]').forEach((button) => {
+    button.classList.toggle('selected', button.dataset.agnesSize === state.agnes21Size);
+    button.setAttribute('aria-pressed', String(button.dataset.agnesSize === state.agnes21Size));
+  });
+  updateAgnes21OutputMeta();
+  if (persist) safeStorageSet(STORAGE_KEYS.agnes21Size, state.agnes21Size);
+  if (state.mode === 'edit') updateModelCapabilities();
+}
+
+function setAgnes21Ratio(ratio, { persist = true } = {}) {
+  state.agnes21Ratio = Object.hasOwn(AGNES_21_OUTPUTS, ratio) ? ratio : '1:1';
+  document.querySelectorAll('[data-agnes-ratio]').forEach((button) => {
+    button.classList.toggle('selected', button.dataset.agnesRatio === state.agnes21Ratio);
+    button.setAttribute('aria-pressed', String(button.dataset.agnesRatio === state.agnes21Ratio));
+  });
+  updateAgnes21OutputMeta();
+  if (persist) safeStorageSet(STORAGE_KEYS.agnes21Ratio, state.agnes21Ratio);
+  if (state.mode === 'edit') updateModelCapabilities();
+}
+
+function getImageOutputSpec(model) {
+  if (isAgnes21ImageModel(model)) {
+    return {
+      size: state.agnes21Size,
+      ratio: state.agnes21Ratio,
+      label: `${state.agnes21Size} · ${state.agnes21Ratio}`,
+    };
+  }
+  return { size: els.imageSize.value, ratio: '', label: els.imageSize.value };
+}
+
+function updateVideoPromptCount() {
+  els.videoPromptCount.textContent = String(els.videoPrompt.value.length);
+}
+
+function updateVideoDurationMeta() {
+  const frameRate = Math.max(1, Math.min(60, Number(els.videoFrameRate.value) || 24));
+  const seconds = state.videoFrames / frameRate;
+  const roundedSeconds = Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1);
+  els.videoDurationMeta.textContent = `约 ${roundedSeconds} 秒 · ${state.videoFrames} 帧`;
+}
+
+function setVideoPreset(width, height) {
+  const resolvedWidth = Number(width);
+  const resolvedHeight = Number(height);
+  if (!resolvedWidth || !resolvedHeight) return;
+  state.videoWidth = resolvedWidth;
+  state.videoHeight = resolvedHeight;
+  els.videoPresetGrid.querySelectorAll('[data-video-width][data-video-height]').forEach((button) => {
+    const selected = Number(button.dataset.videoWidth) === resolvedWidth && Number(button.dataset.videoHeight) === resolvedHeight;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function setVideoFrames(frames) {
+  const resolvedFrames = Number(frames);
+  if (!Number.isInteger(resolvedFrames) || resolvedFrames < 1 || resolvedFrames > 441 || (resolvedFrames - 1) % 8 !== 0) return;
+  state.videoFrames = resolvedFrames;
+  els.videoDurationControl.querySelectorAll('[data-video-frames]').forEach((button) => {
+    const selected = Number(button.dataset.videoFrames) === resolvedFrames;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  updateVideoDurationMeta();
+}
+
+function applyVideoPromptTemplate(templateId) {
+  const template = VIDEO_PROMPT_TEMPLATES[templateId];
+  if (!template) return;
+  const current = els.videoPrompt.value.trim();
+  els.videoPrompt.value = current ? `${current}\n\n${template}` : template;
+  updateVideoPromptCount();
+  safeStorageSet(STORAGE_KEYS.videoPrompt, els.videoPrompt.value);
+  els.videoPrompt.focus();
+  els.videoPrompt.setSelectionRange(els.videoPrompt.value.length, els.videoPrompt.value.length);
+}
+
 function restorePreferences() {
   const storedBaseUrl = safeStorageGet(STORAGE_KEYS.baseUrl);
   const storedModel = safeStorageGet(STORAGE_KEYS.model);
@@ -346,6 +565,10 @@ function restorePreferences() {
   const storedAgnesRoute = safeStorageGet(STORAGE_KEYS.agnesRoute);
   const storedAgnesBaseUrl = safeStorageGet(STORAGE_KEYS.agnesBaseUrl);
   const remembersAgnesKey = safeStorageGet(STORAGE_KEYS.rememberAgnesKey) === 'true';
+  const storedAgnes21Size = safeStorageGet(STORAGE_KEYS.agnes21Size);
+  const storedAgnes21Ratio = safeStorageGet(STORAGE_KEYS.agnes21Ratio);
+  const storedVideoModel = safeStorageGet(STORAGE_KEYS.videoModel);
+  const storedVideoPrompt = safeStorageGet(STORAGE_KEYS.videoPrompt);
 
   if (storedBaseUrl) els.baseUrl.value = storedBaseUrl;
   if (storedModel) els.modelName.value = storedModel;
@@ -354,6 +577,8 @@ function restorePreferences() {
   if (storedChatSystem) els.chatSystemPrompt.value = storedChatSystem;
   if (storedEditModel) els.editModelName.value = storedEditModel;
   if (storedAgnesBaseUrl) els.agnesBaseUrl.value = storedAgnesBaseUrl;
+  if (storedVideoModel) els.videoModelName.value = storedVideoModel;
+  if (storedVideoPrompt) els.videoPrompt.value = storedVideoPrompt;
 
   els.rememberKey.checked = remembersKey;
   if (remembersKey) els.apiKey.value = safeStorageGet(STORAGE_KEYS.apiKey) || '';
@@ -364,8 +589,13 @@ function restorePreferences() {
   applyTheme(storedTheme || (prefersDark ? 'dark' : 'light'));
   setChatReasoning(storedChatReasoning || 'medium');
   setAgnesRoute(storedAgnesRoute || 'direct', { persist: false });
+  setAgnes21Size(storedAgnes21Size || '2K', { persist: false });
+  setAgnes21Ratio(storedAgnes21Ratio || '1:1', { persist: false });
+  setVideoPreset(1152, 768);
+  setVideoFrames(121);
 
   updatePromptCount();
+  updateVideoPromptCount();
   updateRatioPreview();
   updateModelCapabilities();
 }
@@ -392,6 +622,20 @@ function persistAgnesSettings() {
   persistAgnesApiKey();
 }
 
+function updateAgnesRouteCopy() {
+  const isDirect = state.agnesRoute === 'direct';
+  els.agnesRouteTitle.textContent = isDirect ? '直连官方接口' : '通过 new-api 转发';
+  if (state.mode === 'video') {
+    els.agnesRouteDescription.textContent = isDirect
+      ? '推荐用于 Agnes Video：向 /v1/videos 创建任务，并通过 /agnesapi 自动轮询结果。整个过程都只在浏览器中完成。'
+      : '仅当 new-api 已支持 /v1/videos 创建与任务查询时使用；若请求不生成或无法查询，请切换为直连 Agnes。';
+    return;
+  }
+  els.agnesRouteDescription.textContent = isDirect
+    ? '绕过 new-api 的图片字段过滤，完整发送 return_base64 与 extra_body。若浏览器提示跨域失败，可切换到 new-api 并开启渠道“请求体透传”。'
+    : 'new-api 图片请求会过滤未识别字段。请在 Agnes 渠道设置中开启“请求体透传”，否则 return_base64 与 extra_body 可能无法到达上游。';
+}
+
 function setAgnesRoute(route, { persist = true } = {}) {
   state.agnesRoute = route === 'newapi' ? 'newapi' : 'direct';
   els.agnesRouteControl.querySelectorAll('[data-agnes-route]').forEach((button) => {
@@ -400,10 +644,7 @@ function setAgnesRoute(route, { persist = true } = {}) {
     button.setAttribute('aria-pressed', String(selected));
   });
   els.agnesDirectFields.hidden = state.agnesRoute !== 'direct';
-  els.agnesRouteTitle.textContent = state.agnesRoute === 'direct' ? '直连官方接口' : '通过 new-api 转发';
-  els.agnesRouteDescription.textContent = state.agnesRoute === 'direct'
-    ? '绕过 new-api 的图片字段过滤，完整发送 return_base64 与 extra_body。若浏览器提示跨域失败，可切换到 new-api 并开启渠道“请求体透传”。'
-    : 'new-api 图片请求会过滤未识别字段。请在 Agnes 渠道设置中开启“请求体透传”，否则 return_base64 与 extra_body 可能无法到达上游。';
+  updateAgnesRouteCopy();
   if (persist) persistAgnesSettings();
   updateModelCapabilities();
 }
@@ -430,32 +671,39 @@ function getAgnesConnection() {
 function switchMode(mode) {
   const isChat = mode === 'chat';
   const isEdit = mode === 'edit';
-  const isGeneration = !isChat && !isEdit;
+  const isVideo = mode === 'video';
+  const isGeneration = mode === 'generation';
   const isAgnesEdit = isEdit && isAgnesImageModel(els.editModelName.value);
-  state.mode = isChat ? 'chat' : isEdit ? 'edit' : 'generation';
+  state.mode = isChat ? 'chat' : isEdit ? 'edit' : isVideo ? 'video' : 'generation';
 
   els.generationControls.hidden = !isGeneration;
   els.editControls.hidden = !isEdit;
-  els.generationCanvas.hidden = isChat;
+  els.videoControls.hidden = !isVideo;
+  els.generationCanvas.hidden = isChat || isVideo;
   els.chatControls.hidden = !isChat;
   els.chatCanvas.hidden = !isChat;
+  els.videoCanvas.hidden = !isVideo;
   els.generationModeTab.classList.toggle('selected', isGeneration);
   els.chatModeTab.classList.toggle('selected', isChat);
   els.editModeTab.classList.toggle('selected', isEdit);
+  els.videoModeTab.classList.toggle('selected', isVideo);
   els.generationModeTab.setAttribute('aria-selected', String(isGeneration));
   els.chatModeTab.setAttribute('aria-selected', String(isChat));
   els.editModeTab.setAttribute('aria-selected', String(isEdit));
+  els.videoModeTab.setAttribute('aria-selected', String(isVideo));
 
-  els.workspaceEyebrow.textContent = isChat ? 'VISION CHAT' : isEdit ? 'IMAGE EDITS' : 'SETTINGS';
-  els.workspaceTitle.textContent = isChat ? '配置多模态对话' : isEdit ? '编辑原图' : '配置图片生成';
+  els.workspaceEyebrow.textContent = isChat ? 'VISION CHAT' : isVideo ? 'VIDEO TASK' : isEdit ? 'IMAGE EDITS' : 'IMAGE GENERATION';
+  els.workspaceTitle.textContent = isChat ? '配置视觉对话' : isVideo ? '配置视频生成' : isEdit ? '编辑原图' : '配置图片生成';
   els.workspaceDescription.textContent = isChat
     ? '使用 Flash-Lite 进行文本对话、图片理解和改图提示词设计。'
+    : isVideo
+      ? '使用 Agnes Video V2.0 创建文生视频或图生视频异步任务。'
     : isEdit
       ? isAgnesEdit
-        ? '上传原图，通过 Agnes Image 2.0 Flash 的图生图协议直接生成改图结果。'
+        ? '上传原图，通过 Agnes Image 模型的图生图协议直接生成改图结果。'
         : '上传原图并调用支持 /images/edits 的模型生成编辑结果。'
       : '连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。';
-  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : isEdit ? (isAgnesEdit ? 'Agnes Img2Img' : 'Images Edits') : 'Images API';
+  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : isVideo ? 'Agnes Video' : isEdit ? (isAgnesEdit ? 'Agnes Img2Img' : 'Images Edits') : 'Images API';
 
   els.canvasEyebrow.textContent = isEdit ? 'EDITED OUTPUT' : 'LIVE OUTPUT';
   els.canvasTitle.textContent = isEdit ? 'Edited images' : 'Generations';
@@ -468,6 +716,7 @@ function switchMode(mode) {
 
   window.requestAnimationFrame(() => {
     if (isChat) els.chatInput.focus({ preventScroll: true });
+    if (isVideo) els.videoPrompt.focus({ preventScroll: true });
   });
 }
 
@@ -966,7 +1215,8 @@ async function editImage(event) {
     return;
   }
 
-  if (useAgnes) ensureAgnesSize();
+  if (isAgnes20ImageModel(model)) ensureAgnesSize();
+  const outputSpec = getImageOutputSpec(model);
 
   let endpoint;
   let body;
@@ -979,7 +1229,8 @@ async function editImage(event) {
         buildAgnesRequestBody({
           model,
           prompt,
-          size: els.imageSize.value,
+          size: outputSpec.size,
+          ratio: outputSpec.ratio,
           images: [imageDataUrl],
         }),
       );
@@ -991,7 +1242,7 @@ async function editImage(event) {
       body = new FormData();
       body.append('model', model);
       body.append('prompt', prompt);
-      body.append('size', els.imageSize.value);
+      body.append('size', outputSpec.size);
       body.append('n', String(state.count));
       body.append('image', state.editImageFile, state.editImageFile.name);
       headers = { Authorization: `Bearer ${apiKey}` };
@@ -1032,7 +1283,7 @@ async function editImage(event) {
     const results = normalizeResults(payload);
     if (!results.length) throw new Error('接口请求成功，但响应中没有找到编辑后的图片数据');
     state.results = results;
-    renderResults(results, { size: els.imageSize.value, model });
+    renderResults(results, { size: outputSpec.label, model });
     showToast(`成功编辑 ${results.length} 张图片`);
   } catch (error) {
     if (error.name === 'AbortError') showError('本次图片编辑已取消。');
@@ -1081,7 +1332,7 @@ function updateRatioPreview() {
 
 function setSizeOption(option, { close = true } = {}) {
   if (!option) return;
-  if (isAgnesImageModel(getActiveImageModel()) && !AGNES_SIZES.has(option.dataset.value)) {
+  if (isAgnes20ImageModel(getActiveImageModel()) && !AGNES_SIZES.has(option.dataset.value)) {
     showToast('Agnes 仅支持 1024×768、1024×1024、768×1024', 'error');
     return;
   }
@@ -1237,7 +1488,19 @@ function setCount(count) {
 }
 
 function isAgnesImageModel(model) {
-  return /^agnes-image-2\.[01]-flash$/i.test(model.trim());
+  return /^agnes-image-/i.test(model.trim());
+}
+
+function isAgnes20ImageModel(model) {
+  return model.trim().toLowerCase() === 'agnes-image-2.0-flash';
+}
+
+function isAgnes21ImageModel(model) {
+  return model.trim().toLowerCase() === 'agnes-image-2.1-flash';
+}
+
+function isAgnesVideoModel(model) {
+  return /^agnes-video-/i.test(model.trim());
 }
 
 function getActiveImageModel() {
@@ -1256,9 +1519,20 @@ function ensureAgnesSize() {
 
 function updateModelCapabilities() {
   const generationUsesAgnes = isAgnesImageModel(els.modelName.value);
+  const generationUsesAgnes20 = isAgnes20ImageModel(els.modelName.value);
+  const generationUsesAgnes21 = isAgnes21ImageModel(els.modelName.value);
   const editUsesAgnes = isAgnesImageModel(els.editModelName.value);
-  const activeUsesAgnes = state.mode === 'edit' ? editUsesAgnes : state.mode === 'generation' && generationUsesAgnes;
+  const editUsesAgnes20 = isAgnes20ImageModel(els.editModelName.value);
+  const editUsesAgnes21 = isAgnes21ImageModel(els.editModelName.value);
+  const videoUsesAgnes = isAgnesVideoModel(els.videoModelName.value);
+  const activeUsesAgnes = state.mode === 'video'
+    ? videoUsesAgnes
+    : state.mode === 'edit'
+      ? editUsesAgnes
+      : state.mode === 'generation' && generationUsesAgnes;
   const usesDirectAgnes = activeUsesAgnes && state.agnesRoute === 'direct';
+
+  updateAgnesRouteCopy();
 
   els.agnesConnectionSection.hidden = !activeUsesAgnes;
   els.newApiConnectionSection.hidden = usesDirectAgnes;
@@ -1266,13 +1540,24 @@ function updateModelCapabilities() {
   els.apiKey.required = !usesDirectAgnes;
   els.agnesBaseUrl.required = usesDirectAgnes;
   els.agnesApiKey.required = usesDirectAgnes;
+  els.agnes21Settings.hidden = !generationUsesAgnes21;
+  els.editAgnes21Settings.hidden = !editUsesAgnes21;
+  els.standardSizeBlock.hidden = generationUsesAgnes21;
 
-  els.generationModelDescription.textContent = generationUsesAgnes
-    ? 'Agnes 支持文生图，并以 Base64 返回结果。官方文档当前价格为 $0/张；new-api 是否扣费以渠道配置为准。'
+  els.generationModelDescription.textContent = generationUsesAgnes21
+    ? 'Agnes Image 2.1 Flash 支持 1K–4K 与独立宽高比，适合高信息密度、复杂构图和细节丰富的场景。'
+    : generationUsesAgnes20
+      ? 'Agnes Image 2.0 Flash 支持文生图、图生图与多图合成，并以 Base64 返回结果。'
+    : generationUsesAgnes
+      ? 'Agnes 图片模型会使用独立连接，并通过 /images/generations 返回结果。'
     : '默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。';
 
   els.editModelDescription.textContent = editUsesAgnes
-    ? 'Agnes 使用 /images/generations，并在 extra_body.image 中传入原图，不会调用 /images/edits。'
+    ? editUsesAgnes21
+      ? 'Agnes 2.1 使用 /images/generations 改图，可在下方独立选择 1K–4K 与画面比例。'
+      : editUsesAgnes20
+        ? 'Agnes 2.0 使用 /images/generations，并在 extra_body.image 中传入原图，不会调用 /images/edits。'
+        : 'Agnes 图片模型会使用 /images/generations，并在 extra_body.image 中传入原图。'
     : '通用编辑模型使用 /images/edits；模型必须支持 multipart/form-data 图片上传。';
   els.editUploadTransport.textContent = editUsesAgnes
     ? state.agnesRoute === 'direct'
@@ -1282,37 +1567,58 @@ function updateModelCapabilities() {
   els.editProtocolBadge.textContent = editUsesAgnes ? 'Agnes 图生图' : '编辑接口要求';
   els.editCapabilityText.textContent = editUsesAgnes
     ? state.agnesRoute === 'direct'
-      ? '支持真实改图，结果使用 Base64 返回。可用尺寸为 1024×768、1024×1024、768×1024；官方当前价格为 $0/张。'
+      ? editUsesAgnes21
+        ? `支持真实改图，当前输出规格为 ${state.agnes21Size} / ${state.agnes21Ratio}，结果使用 Base64 返回。`
+        : editUsesAgnes20
+          ? '支持真实改图，结果使用 Base64 返回。可用尺寸为 1024×768、1024×1024、768×1024。'
+          : '使用 Agnes 图生图请求结构，结果以 Base64 返回；具体尺寸能力取决于该模型文档。'
       : '通过 new-api 时请开启渠道“请求体透传”，否则 extra_body.image 可能被过滤。官方当前价格为 $0/张。'
     : '如果接口返回 404 或提示模型不支持，请确认 new-api 已启用对应编辑模型。SenseNova Flash-Lite 仅负责理解图片，不能输出改图结果。';
 
   document.querySelectorAll('[data-generation-model]').forEach((button) => {
-    button.classList.toggle('selected', button.dataset.generationModel === els.modelName.value.trim());
+    const selected = button.dataset.generationModel === els.modelName.value.trim();
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
   });
   document.querySelectorAll('[data-edit-model]').forEach((button) => {
-    button.classList.toggle('selected', button.dataset.editModel === els.editModelName.value.trim());
+    const selected = button.dataset.editModel === els.editModelName.value.trim();
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  document.querySelectorAll('[data-video-model]').forEach((button) => {
+    const selected = button.dataset.videoModel === els.videoModelName.value.trim();
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
   });
 
   els.quantityControl.querySelectorAll('[data-count]').forEach((button) => {
     button.disabled = generationUsesAgnes && Number(button.dataset.count) !== 1;
   });
   if (generationUsesAgnes && state.count !== 1) setCount(1);
-  if (activeUsesAgnes) ensureAgnesSize();
+  if ((state.mode === 'generation' && isAgnes20ImageModel(els.modelName.value)) || (state.mode === 'edit' && isAgnes20ImageModel(els.editModelName.value))) {
+    ensureAgnesSize();
+  }
 
   if (state.mode === 'edit') {
     els.workspaceDescription.textContent = editUsesAgnes
-      ? '上传原图，通过 Agnes Image 2.0 Flash 的图生图协议直接生成改图结果。'
+      ? `上传原图，通过 ${els.editModelName.value.trim()} 的图生图协议直接生成改图结果。`
       : '上传原图并调用支持 /images/edits 的模型生成编辑结果。';
     els.workspaceBadge.textContent = editUsesAgnes ? 'Agnes Img2Img' : 'Images Edits';
+  } else if (state.mode === 'video') {
+    els.workspaceDescription.textContent = videoUsesAgnes
+      ? '创建 Agnes Video V2.0 文生视频或图生视频任务，并自动轮询生成结果。'
+      : '填写兼容的视频模型名称并创建异步生成任务。';
+    els.workspaceBadge.textContent = 'Video API';
   }
 }
 
-function buildAgnesRequestBody({ model = AGNES_MODEL, prompt, size, images = [] }) {
+function buildAgnesRequestBody({ model = AGNES_MODEL, prompt, size, ratio = '', images = [] }) {
   const body = {
     model,
     prompt,
     size,
   };
+  if (ratio) body.ratio = ratio;
 
   if (images.length) {
     body.extra_body = {
@@ -1602,6 +1908,326 @@ async function downloadAll() {
   showToast(downloaded ? `已触发 ${downloaded} 张图片下载` : '已打开原图，请手动保存');
 }
 
+function buildVideoCreateEndpoint(input) {
+  const raw = input.trim().replace(/\/+$/, '');
+  if (!raw) throw new Error('请输入 Agnes API 地址');
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('Agnes API 地址格式不正确');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Agnes API 地址必须使用 http 或 https');
+  if (/\/v1\/videos$/i.test(parsed.pathname) || /\/videos$/i.test(parsed.pathname)) return raw;
+  if (/\/v1\/images\/generations$/i.test(parsed.pathname)) {
+    parsed.pathname = parsed.pathname.replace(/\/images\/generations$/i, '/videos');
+    return parsed.toString().replace(/\/$/, '');
+  }
+  if (/\/v1$/i.test(parsed.pathname)) return `${raw}/videos`;
+  return `${raw}/v1/videos`;
+}
+
+function buildVideoStatusEndpoints(input, { videoId, taskId, model, connection }) {
+  const raw = input.trim().replace(/\/+$/, '');
+  const parsed = new URL(raw);
+  const rootPath = parsed.pathname.replace(/\/v1(?:\/videos|\/images\/generations)?$/i, '').replace(/\/+$/, '');
+  const root = `${parsed.origin}${rootPath}`;
+  const recommended = connection?.route === 'direct' && videoId
+    ? `${root}/agnesapi?video_id=${encodeURIComponent(videoId)}&model_name=${encodeURIComponent(model)}`
+    : '';
+  const createEndpoint = buildVideoCreateEndpoint(raw);
+  const legacyBase = createEndpoint.replace(/\/+$/, '');
+  const legacy = taskId ? `${legacyBase}/${encodeURIComponent(taskId)}` : '';
+  return { recommended, legacy };
+}
+
+function setVideoView(view) {
+  els.videoEmptyState.hidden = view !== 'empty';
+  els.videoProgressState.hidden = view !== 'progress';
+  els.videoErrorState.hidden = view !== 'error';
+  els.videoResult.hidden = view !== 'result';
+}
+
+function setVideoBusy(isBusy) {
+  els.videoGenerateButton.disabled = isBusy;
+  els.videoGenerateButtonText.textContent = isBusy ? '视频生成中…' : '创建视频任务';
+  els.cancelVideoButton.hidden = !isBusy;
+}
+
+function updateVideoProgress(payload = {}) {
+  payload = unwrapVideoPayload(payload);
+  const status = String(payload.status || 'queued').toLowerCase();
+  const progress = Math.max(0, Math.min(100, Number(payload.progress) || 0));
+  const statusText = status === 'in_progress' ? '正在生成视频' : status === 'completed' ? '视频生成完成' : '任务正在排队';
+  els.videoProgressTitle.textContent = statusText;
+  els.videoProgressMessage.textContent = status === 'queued'
+    ? 'Agnes 已接收任务，正在等待可用的生成资源。'
+    : `当前进度 ${progress}%，视频生成可能需要数分钟。`;
+  els.videoProgressBar.style.width = `${progress}%`;
+  els.videoProgressPercent.textContent = `${progress}%`;
+  els.videoStatusBadge.textContent = status.toUpperCase();
+  els.videoMeta.textContent = `${status.toUpperCase()} · ${progress}%`;
+}
+
+function unwrapVideoPayload(payload) {
+  if (!payload?.data || Array.isArray(payload.data) || typeof payload.data !== 'object') return payload || {};
+  return { ...payload, ...payload.data, metadata: payload.data.metadata || payload.metadata };
+}
+
+function normalizeVideoUrl(payload) {
+  payload = unwrapVideoPayload(payload);
+  return payload?.metadata?.url || payload?.data?.url || payload?.video_url || payload?.url || '';
+}
+
+async function fetchVideoStatus(endpoint, apiKey, signal) {
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    signal,
+  });
+  const raw = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    const error = new Error(raw ? `视频状态接口返回非 JSON：${raw.slice(0, 160)}` : '视频状态接口返回为空');
+    error.status = response.status;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error(extractError(payload, response.status));
+    error.status = response.status;
+    throw error;
+  }
+  return unwrapVideoPayload(payload);
+}
+
+function waitForVideoPoll(milliseconds, signal) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener('abort', abort);
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, milliseconds);
+    const abort = () => {
+      window.clearTimeout(timer);
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+}
+
+function renderVideoResult(payload, task) {
+  payload = unwrapVideoPayload(payload);
+  const url = normalizeVideoUrl(payload);
+  if (!url) throw new Error('任务已完成，但响应中没有找到 metadata.url 视频地址');
+  state.videoUrl = url;
+  els.videoResultPlayer.src = url;
+  els.videoResultTitle.textContent = task.model;
+  const seconds = payload.seconds ? `${payload.seconds} 秒` : `${Math.round(state.videoFrames / Number(els.videoFrameRate.value || 24))} 秒`;
+  const size = payload.size || `${state.videoWidth}×${state.videoHeight}`;
+  els.videoResultDetails.textContent = `${size} · ${seconds} · ${task.taskId || task.videoId}`;
+  els.videoStatusBadge.textContent = 'COMPLETED';
+  els.videoMeta.textContent = `COMPLETED · ${size}`;
+  els.clearVideoButton.disabled = false;
+  setVideoView('result');
+  showToast('视频生成完成');
+}
+
+async function pollVideoTask(task, controller) {
+  const endpoints = buildVideoStatusEndpoints(task.connection.baseUrl, task);
+  while (!controller.signal.aborted) {
+    await waitForVideoPoll(5000, controller.signal);
+    let payload;
+    try {
+      if (!endpoints.recommended) throw Object.assign(new Error('缺少 video_id'), { status: 404 });
+      payload = await fetchVideoStatus(endpoints.recommended, task.connection.apiKey, controller.signal);
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      if (!endpoints.legacy || ![400, 404, 405].includes(error.status)) throw error;
+      payload = await fetchVideoStatus(endpoints.legacy, task.connection.apiKey, controller.signal);
+    }
+
+    updateVideoProgress(payload);
+    const status = String(payload.status || '').toLowerCase();
+    if (status === 'completed') {
+      renderVideoResult(payload, task);
+      return;
+    }
+    if (status === 'failed') {
+      const message = payload?.error?.message || payload?.error || 'Agnes 视频任务生成失败';
+      throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+    }
+  }
+}
+
+async function generateVideo() {
+  if (state.videoController) return;
+  const model = els.videoModelName.value.trim();
+  const prompt = els.videoPrompt.value.trim();
+  const connection = isAgnesVideoModel(model)
+    ? getAgnesConnection()
+    : { baseUrl: els.baseUrl.value.trim(), apiKey: els.apiKey.value.trim(), baseUrlInput: els.baseUrl, apiKeyInput: els.apiKey, route: 'newapi' };
+  if (!model) {
+    els.videoModelName.focus();
+    showToast('请输入视频模型名称', 'error');
+    return;
+  }
+  if (!connection.apiKey) {
+    connection.apiKeyInput.focus();
+    showToast(isAgnesVideoModel(model) ? '请输入 Agnes API Key' : '请输入 API Key', 'error');
+    return;
+  }
+  if (!prompt) {
+    els.videoPrompt.focus();
+    showToast('请输入视频描述', 'error');
+    return;
+  }
+  const imageUrl = els.videoImageUrl.value.trim();
+  if (imageUrl) {
+    try {
+      const parsed = new URL(imageUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+    } catch {
+      els.videoImageUrl.focus();
+      showToast('起始图片必须是公开可访问的 http(s) URL', 'error');
+      return;
+    }
+  }
+
+  let endpoint;
+  try {
+    endpoint = buildVideoCreateEndpoint(connection.baseUrl);
+  } catch (error) {
+    connection.baseUrlInput.focus();
+    showToast(error.message, 'error');
+    return;
+  }
+
+  const frameRate = Math.max(1, Math.min(60, Number(els.videoFrameRate.value) || 24));
+  const body = {
+    model,
+    prompt,
+    width: state.videoWidth,
+    height: state.videoHeight,
+    num_frames: state.videoFrames,
+    frame_rate: frameRate,
+  };
+  if (imageUrl) body.image = imageUrl;
+  const negativePrompt = els.videoNegativePrompt.value.trim();
+  if (negativePrompt) body.negative_prompt = negativePrompt;
+  const seed = els.videoSeed.value.trim();
+  if (seed) body.seed = Number(seed);
+
+  persistAgnesSettings();
+  safeStorageSet(STORAGE_KEYS.videoModel, model);
+  safeStorageSet(STORAGE_KEYS.videoPrompt, prompt);
+  const controller = new AbortController();
+  state.videoController = controller;
+  state.videoUrl = '';
+  setVideoBusy(true);
+  setVideoView('progress');
+  updateVideoProgress({ status: 'queued', progress: 0 });
+  els.videoProgressTitle.textContent = '正在创建视频任务';
+  els.videoProgressMessage.textContent = '正在向 Agnes Video API 提交生成参数……';
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${connection.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw new Error(raw ? `视频创建接口返回非 JSON：${raw.slice(0, 160)}` : '视频创建接口返回为空');
+    }
+    if (!response.ok) throw new Error(extractError(payload, response.status));
+    payload = unwrapVideoPayload(payload);
+
+    const taskId = payload.task_id || payload.id || '';
+    const videoId = payload.video_id || '';
+    if (!taskId && !videoId) throw new Error('任务创建成功，但响应中没有 task_id 或 video_id');
+    const task = { taskId, videoId, model, connection };
+    state.videoTask = task;
+    els.videoTaskId.textContent = `TASK ${taskId || videoId}`;
+    updateVideoProgress(payload);
+    if (String(payload.status || '').toLowerCase() === 'completed' && normalizeVideoUrl(payload)) {
+      renderVideoResult(payload, task);
+      return;
+    }
+    await pollVideoTask(task, controller);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      els.videoErrorMessage.textContent = '已停止等待。上游视频任务可能仍在继续，可稍后使用任务 ID 查询。';
+      els.videoStatusBadge.textContent = 'CANCELLED';
+      els.videoMeta.textContent = 'POLLING CANCELLED';
+    } else if (error instanceof TypeError && /fetch/i.test(error.message)) {
+      els.videoErrorMessage.textContent = connection.route === 'direct'
+        ? '无法直连 Agnes Video。请检查 Agnes URL、Key，以及浏览器是否允许跨域请求。'
+        : 'new-api 未能转发视频任务。建议切换为“直连 Agnes”，或确认 new-api 已实现 /v1/videos 创建与查询接口。';
+      els.videoStatusBadge.textContent = 'FAILED';
+      els.videoMeta.textContent = 'REQUEST FAILED';
+    } else {
+      els.videoErrorMessage.textContent = error.message || '视频生成失败，请检查接口和参数。';
+      els.videoStatusBadge.textContent = 'FAILED';
+      els.videoMeta.textContent = 'REQUEST FAILED';
+    }
+    setVideoView('error');
+  } finally {
+    if (state.videoController === controller) state.videoController = null;
+    setVideoBusy(false);
+  }
+}
+
+function cancelVideoGeneration() {
+  state.videoController?.abort();
+}
+
+function clearVideoResult() {
+  cancelVideoGeneration();
+  state.videoTask = null;
+  state.videoUrl = '';
+  els.videoResultPlayer.pause();
+  els.videoResultPlayer.removeAttribute('src');
+  els.videoResultPlayer.load();
+  els.videoProgressBar.style.width = '0%';
+  els.videoStatusBadge.textContent = 'READY';
+  els.videoMeta.textContent = 'READY FOR INPUT';
+  els.clearVideoButton.disabled = true;
+  setVideoView('empty');
+}
+
+async function copyVideoUrl() {
+  if (!state.videoUrl) return;
+  try {
+    await navigator.clipboard.writeText(state.videoUrl);
+    showToast('视频地址已复制');
+  } catch {
+    showToast('浏览器未允许复制', 'error');
+  }
+}
+
+function openVideoResult() {
+  if (!state.videoUrl) return;
+  const opened = window.open(state.videoUrl, '_blank', 'noopener,noreferrer');
+  if (!opened) showToast('浏览器拦截了新窗口', 'error');
+}
+
+function downloadVideoResult() {
+  if (!state.videoUrl) return;
+  triggerDownload(state.videoUrl, `agnes-video-${Date.now()}.mp4`);
+  showToast('已尝试下载视频；若浏览器直接打开，请手动保存');
+}
+
 function clearResults() {
   state.results = [];
   els.resultsGrid.replaceChildren();
@@ -1667,17 +2293,19 @@ async function generateImages(event) {
   if (useAgnes) persistAgnesSettings();
   safeStorageSet(STORAGE_KEYS.prompt, prompt);
 
-  if (useAgnes) ensureAgnesSize();
+  if (isAgnes20ImageModel(model)) ensureAgnesSize();
+  const outputSpec = getImageOutputSpec(model);
   const requestBody = useAgnes
     ? buildAgnesRequestBody({
         model,
         prompt: buildFinalPrompt(prompt),
-        size: els.imageSize.value,
+        size: outputSpec.size,
+        ratio: outputSpec.ratio,
       })
     : {
         model,
         prompt: buildFinalPrompt(prompt),
-        size: els.imageSize.value,
+        size: outputSpec.size,
         n: state.count,
       };
 
@@ -1715,7 +2343,7 @@ async function generateImages(event) {
     }
 
     state.results = results;
-    renderResults(results, { size: els.imageSize.value, model });
+    renderResults(results, { size: outputSpec.label, model });
     showToast(`成功生成 ${results.length} 张图片`);
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -1737,6 +2365,8 @@ async function generateImages(event) {
 function cancelGeneration() {
   state.controller?.abort();
 }
+
+renderModelSelectors();
 
 els.toggleKey.addEventListener('click', () => {
   const isPassword = els.apiKey.type === 'password';
@@ -1761,6 +2391,7 @@ els.themeToggle.addEventListener('click', () => {
 els.generationModeTab.addEventListener('click', () => switchMode('generation'));
 els.chatModeTab.addEventListener('click', () => switchMode('chat'));
 els.editModeTab.addEventListener('click', () => switchMode('edit'));
+els.videoModeTab.addEventListener('click', () => switchMode('video'));
 
 els.rememberKey.addEventListener('change', persistApiKey);
 els.apiKey.addEventListener('change', persistApiKey);
@@ -1775,19 +2406,31 @@ els.agnesRouteControl.addEventListener('click', (event) => {
 els.modelName.addEventListener('change', persistConnectionSettings);
 els.modelName.addEventListener('input', updateModelCapabilities);
 els.editModelName.addEventListener('input', updateModelCapabilities);
-document.querySelectorAll('[data-generation-model]').forEach((button) => {
-  button.addEventListener('click', () => {
-    els.modelName.value = button.dataset.generationModel;
-    persistConnectionSettings();
-    updateModelCapabilities();
-  });
+els.videoModelName.addEventListener('input', updateModelCapabilities);
+els.videoModelName.addEventListener('change', () => {
+  safeStorageSet(STORAGE_KEYS.videoModel, els.videoModelName.value.trim());
+  updateModelCapabilities();
 });
-document.querySelectorAll('[data-edit-model]').forEach((button) => {
-  button.addEventListener('click', () => {
-    els.editModelName.value = button.dataset.editModel;
-    safeStorageSet(STORAGE_KEYS.editModel, els.editModelName.value);
-    updateModelCapabilities();
-  });
+els.generationModelSelector.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-generation-model]');
+  if (!button) return;
+  els.modelName.value = button.dataset.generationModel;
+  persistConnectionSettings();
+  updateModelCapabilities();
+});
+els.editModelSelector.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-edit-model]');
+  if (!button) return;
+  els.editModelName.value = button.dataset.editModel;
+  safeStorageSet(STORAGE_KEYS.editModel, els.editModelName.value);
+  updateModelCapabilities();
+});
+els.videoModelSelector.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-video-model]');
+  if (!button) return;
+  els.videoModelName.value = button.dataset.videoModel;
+  safeStorageSet(STORAGE_KEYS.videoModel, els.videoModelName.value);
+  updateModelCapabilities();
 });
 els.chatModelName.addEventListener('change', () => {
   safeStorageSet(STORAGE_KEYS.chatModel, els.chatModelName.value.trim());
@@ -1797,6 +2440,33 @@ els.chatSystemPrompt.addEventListener('change', () => {
 });
 els.prompt.addEventListener('input', updatePromptCount);
 els.prompt.addEventListener('change', () => safeStorageSet(STORAGE_KEYS.prompt, els.prompt.value));
+document.addEventListener('click', (event) => {
+  const sizeButton = event.target.closest('[data-agnes-size]');
+  if (sizeButton) setAgnes21Size(sizeButton.dataset.agnesSize);
+  const ratioButton = event.target.closest('[data-agnes-ratio]');
+  if (ratioButton) setAgnes21Ratio(ratioButton.dataset.agnesRatio);
+});
+
+els.videoPrompt.addEventListener('input', updateVideoPromptCount);
+els.videoPrompt.addEventListener('change', () => safeStorageSet(STORAGE_KEYS.videoPrompt, els.videoPrompt.value));
+els.videoPresetGrid.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-video-width][data-video-height]');
+  if (button) setVideoPreset(button.dataset.videoWidth, button.dataset.videoHeight);
+});
+els.videoDurationControl.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-video-frames]');
+  if (button) setVideoFrames(button.dataset.videoFrames);
+});
+els.videoFrameRate.addEventListener('input', updateVideoDurationMeta);
+document.querySelectorAll('[data-video-prompt]').forEach((button) => {
+  button.addEventListener('click', () => applyVideoPromptTemplate(button.dataset.videoPrompt));
+});
+els.videoGenerateButton.addEventListener('click', generateVideo);
+els.cancelVideoButton.addEventListener('click', cancelVideoGeneration);
+els.clearVideoButton.addEventListener('click', clearVideoResult);
+els.copyVideoUrlButton.addEventListener('click', copyVideoUrl);
+els.openVideoButton.addEventListener('click', openVideoResult);
+els.downloadVideoButton.addEventListener('click', downloadVideoResult);
 
 document.querySelectorAll('[data-template]').forEach((button) => {
   button.addEventListener('click', () => applyTemplate(button.dataset.template, { closeLibrary: false }));
@@ -1988,6 +2658,8 @@ document.addEventListener('keydown', (event) => {
       sendChatMessage();
     } else if (state.mode === 'edit') {
       editImage();
+    } else if (state.mode === 'video') {
+      generateVideo();
     } else if (!state.controller) {
       els.form.requestSubmit();
     }

@@ -6,22 +6,22 @@
     <meta name="theme-color" content="#0b0d10" />
     <meta
       name="description"
-      content="兼容 OpenAI Images API 的纯静态图片生成工作台，可通过 new-api 调用不同图片模型。"
+      content="纯静态 AI 媒体工作台，支持图片生成、图片编辑、视频生成与多模态视觉对话。"
     />
-    <title>Image Generation Studio</title>
+    <title>AI Media Studio</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <a class="brand" href="#" aria-label="Nova Canvas 首页">
+        <a class="brand" href="#" aria-label="AI Media Studio 首页">
           <span class="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 16 16" width="32" height="32" fill="currentColor">
               <path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.59 2.29 6.64 5.47 7.72.4.08.55-.18.55-.39 0-.2-.01-.84-.01-1.52-2.01.38-2.53-.5-2.69-.96-.09-.23-.48-.96-.82-1.16-.28-.15-.68-.53-.01-.54.63-.01 1.08.59 1.23.83.72 1.23 1.87.88 2.33.67.07-.53.28-.88.51-1.08-1.78-.21-3.64-.91-3.64-4.02 0-.89.31-1.62.82-2.19-.08-.2-.36-1.04.08-2.16 0 0 .67-.22 2.2.84A7.45 7.45 0 0 1 8 3.9c.68 0 1.36.09 2 .27 1.53-1.06 2.2-.84 2.2-.84.44 1.12.16 1.96.08 2.16.51.57.82 1.3.82 2.19 0 3.12-1.87 3.81-3.65 4.02.29.25.54.74.54 1.5 0 1.08-.01 1.95-.01 2.22 0 .21.15.47.55.39A8.14 8.14 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z" />
             </svg>
           </span>
           <span class="brand-copy">
-            <strong>Image Generation Studio</strong>
+            <strong>AI Media Studio</strong>
             <span class="public-badge">Public</span>
           </span>
         </a>
@@ -47,7 +47,7 @@
           </a>
           <a
             class="text-link"
-            href="https://agnes-ai.com/zh-Hans/docs/agnes-image-20-flash"
+            href="https://agnes-ai.com/zh-Hans/docs/agnes-image-21-flash"
             target="_blank"
             rel="noreferrer"
           >
@@ -64,13 +64,17 @@
               <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 16 11.75v-7.5a1.75 1.75 0 0 0-1.75-1.75H1.75Zm12.5 1.5a.25.25 0 0 1 .25.25v5.19l-2.22-2.22a.75.75 0 0 0-1.06 0l-2.47 2.47-1.47-1.47a.75.75 0 0 0-1.06 0L1.5 12.94V4.25A.25.25 0 0 1 1.75 4h12.5ZM2.56 12l4.19-4.19 1.47 1.47a.75.75 0 0 0 1.06 0l2.47-2.47 2.75 2.75v2.19a.25.25 0 0 1-.25.25H2.56Z" /></svg>
               图片生成
             </button>
-            <button class="workspace-tab" id="chatModeTab" type="button" role="tab" aria-selected="false">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 1.5h12.5c.966 0 1.75.784 1.75 1.75v8.5a1.75 1.75 0 0 1-1.75 1.75H7.92l-3.83 2.298A.75.75 0 0 1 3 15.155V13.5H1.75A1.75 1.75 0 0 1 0 11.75v-8.5C0 2.284.784 1.5 1.75 1.5Zm0 1.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v1.08l2.83-1.698A.75.75 0 0 1 7.715 12h6.535a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75Z" /></svg>
-              多模态对话
-            </button>
             <button class="workspace-tab" id="editModeTab" type="button" role="tab" aria-selected="false">
               <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-7.75 7.75a1.75 1.75 0 0 1-.734.43l-3.25.975a.75.75 0 0 1-.931-.93l.975-3.25a1.75 1.75 0 0 1 .43-.735l7.7-7.8Zm1.414 1.06a.25.25 0 0 0-.353 0l-.793.793 1.439 1.439.793-.793a.25.25 0 0 0 0-.353l-1.086-1.086ZM11.659 5.78 10.22 4.34l-6.867 6.956a.25.25 0 0 0-.061.105l-.563 1.876 1.876-.563a.25.25 0 0 0 .105-.061l6.949-6.873Z" /></svg>
               图片编辑
+            </button>
+            <button class="workspace-tab" id="videoModeTab" type="button" role="tab" aria-selected="false">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 12 11.75v-.69l2.705 1.623A.85.85 0 0 0 16 11.954V4.046a.85.85 0 0 0-1.295-.729L12 4.94v-.69A1.75 1.75 0 0 0 10.25 2.5h-8.5Zm8.75 1.75v7.5a.25.25 0 0 1-.25.25h-8.5a.25.25 0 0 1-.25-.25v-7.5A.25.25 0 0 1 1.75 4h8.5a.25.25 0 0 1 .25.25Zm1.5 2.44 2.5-1.5v5.62l-2.5-1.5V6.69Z" /></svg>
+              视频生成
+            </button>
+            <button class="workspace-tab" id="chatModeTab" type="button" role="tab" aria-selected="false">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M1.75 1.5h12.5c.966 0 1.75.784 1.75 1.75v8.5a1.75 1.75 0 0 1-1.75 1.75H7.92l-3.83 2.298A.75.75 0 0 1 3 15.155V13.5H1.75A1.75 1.75 0 0 1 0 11.75v-8.5C0 2.284.784 1.5 1.75 1.5Zm0 1.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v1.08l2.83-1.698A.75.75 0 0 1 7.715 12h6.535a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75Z" /></svg>
+              视觉对话
             </button>
           </div>
 
@@ -262,17 +266,36 @@
                     <div class="input-shell compact-input-shell">
                       <input id="modelName" name="model" value="sensenova-u1-fast" list="imageModelOptions" spellcheck="false" required />
                     </div>
-                    <div class="model-preset-row" aria-label="图片模型快捷选择">
-                      <button class="model-preset-button" type="button" data-generation-model="sensenova-u1-fast">SenseNova U1 Fast</button>
-                      <button class="model-preset-button" type="button" data-generation-model="agnes-image-2.0-flash">
-                        Agnes 2.0 Flash
-                        <span class="free-badge">官方当前 $0/张</span>
-                      </button>
-                    </div>
+                    <div class="model-catalog-grid" id="generationModelSelector" aria-label="图片生成模型"></div>
                     <p class="field-description" id="generationModelDescription">默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。</p>
                   </div>
 
-                  <div class="setting-block">
+                  <div class="setting-block model-block" id="agnes21Settings" hidden>
+                    <div class="model-parameter-heading">
+                      <span class="setting-label">Agnes 2.1 输出规格</span>
+                      <span class="version-tag" id="agnes21OutputMeta">2K · 1:1 · 2048×2048</span>
+                    </div>
+                    <span class="parameter-label">分辨率等级</span>
+                    <div class="parameter-segmented" id="agnes21SizeControl" role="group" aria-label="Agnes 2.1 分辨率等级">
+                      <button type="button" data-agnes-size="1K">1K</button>
+                      <button type="button" class="selected" data-agnes-size="2K">2K</button>
+                      <button type="button" data-agnes-size="3K">3K</button>
+                      <button type="button" data-agnes-size="4K">4K</button>
+                    </div>
+                    <span class="parameter-label">画面比例</span>
+                    <div class="ratio-choice-grid" id="agnes21RatioControl" role="group" aria-label="Agnes 2.1 画面比例">
+                      <button type="button" class="selected" data-agnes-ratio="1:1">1:1</button>
+                      <button type="button" data-agnes-ratio="3:4">3:4</button>
+                      <button type="button" data-agnes-ratio="4:3">4:3</button>
+                      <button type="button" data-agnes-ratio="16:9">16:9</button>
+                      <button type="button" data-agnes-ratio="9:16">9:16</button>
+                      <button type="button" data-agnes-ratio="2:3">2:3</button>
+                      <button type="button" data-agnes-ratio="3:2">3:2</button>
+                      <button type="button" data-agnes-ratio="21:9">21:9</button>
+                    </div>
+                  </div>
+
+                  <div class="setting-block" id="standardSizeBlock">
                     <label for="sizeSelectButton">画布比例</label>
                     <input id="imageSize" name="size" type="hidden" value="2752x1536" />
                     <div class="custom-select" id="sizeSelect">
@@ -352,14 +375,33 @@
                 <div class="input-shell compact-input-shell">
                   <input id="editModelName" value="gpt-image-1" list="imageModelOptions" placeholder="例如 agnes-image-2.0-flash" spellcheck="false" />
                 </div>
-                <div class="model-preset-row" aria-label="编辑模型快捷选择">
-                  <button class="model-preset-button" type="button" data-edit-model="agnes-image-2.0-flash">
-                    Agnes 2.0 Flash
-                    <span class="free-badge">可改图</span>
-                  </button>
-                  <button class="model-preset-button" type="button" data-edit-model="gpt-image-1">gpt-image-1</button>
-                </div>
+                <div class="model-catalog-grid" id="editModelSelector" aria-label="图片编辑模型"></div>
                 <p class="field-description" id="editModelDescription">通用编辑模型走 <code>/images/edits</code>；Agnes 会自动改用 <code>/images/generations</code> 的图生图协议。</p>
+              </section>
+
+              <section class="form-section compact-section" id="editAgnes21Settings" hidden>
+                <div class="model-parameter-heading">
+                  <span class="setting-label">Agnes 2.1 编辑输出规格</span>
+                  <span class="version-tag" id="editAgnes21OutputMeta">2K · 1:1 · 2048×2048</span>
+                </div>
+                <span class="parameter-label">分辨率等级</span>
+                <div class="parameter-segmented" id="editAgnes21SizeControl" role="group" aria-label="Agnes 2.1 编辑分辨率等级">
+                  <button type="button" data-agnes-size="1K">1K</button>
+                  <button type="button" class="selected" data-agnes-size="2K">2K</button>
+                  <button type="button" data-agnes-size="3K">3K</button>
+                  <button type="button" data-agnes-size="4K">4K</button>
+                </div>
+                <span class="parameter-label">画面比例</span>
+                <div class="ratio-choice-grid" id="editAgnes21RatioControl" role="group" aria-label="Agnes 2.1 编辑画面比例">
+                  <button type="button" class="selected" data-agnes-ratio="1:1">1:1</button>
+                  <button type="button" data-agnes-ratio="3:4">3:4</button>
+                  <button type="button" data-agnes-ratio="4:3">4:3</button>
+                  <button type="button" data-agnes-ratio="16:9">16:9</button>
+                  <button type="button" data-agnes-ratio="9:16">9:16</button>
+                  <button type="button" data-agnes-ratio="2:3">2:3</button>
+                  <button type="button" data-agnes-ratio="3:2">3:2</button>
+                  <button type="button" data-agnes-ratio="21:9">21:9</button>
+                </div>
               </section>
 
               <section class="form-section">
@@ -411,10 +453,105 @@
               </div>
             </div>
 
+            <div class="video-controls" id="videoControls" hidden>
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="videoModelName">视频模型</label>
+                  <span class="required-badge">必填</span>
+                </div>
+                <div class="input-shell compact-input-shell">
+                  <input id="videoModelName" value="agnes-video-v2.0" list="imageModelOptions" spellcheck="false" />
+                </div>
+                <div class="model-catalog-grid" id="videoModelSelector" aria-label="视频生成模型"></div>
+                <p class="field-description">模型采用异步任务：先创建视频，再自动轮询进度并显示最终 MP4。</p>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="videoPrompt">视频描述</label>
+                  <span class="counter"><span id="videoPromptCount">0</span> / 8000</span>
+                </div>
+                <div class="textarea-shell">
+                  <textarea id="videoPrompt" maxlength="8000" rows="7" placeholder="描述主体动作、镜头运动、场景、光线、节奏和需要保持的视觉一致性……"></textarea>
+                </div>
+                <div class="template-row">
+                  <button class="template-chip" type="button" data-video-prompt="cinematic">电影镜头</button>
+                  <button class="template-chip" type="button" data-video-prompt="product">产品展示</button>
+                  <button class="template-chip" type="button" data-video-prompt="social">竖屏短视频</button>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="videoImageUrl">起始图片 URL</label>
+                  <span class="section-hint">可选 · 图生视频</span>
+                </div>
+                <div class="input-shell url-input-shell">
+                  <span class="input-icon" aria-hidden="true">↗</span>
+                  <input id="videoImageUrl" type="url" placeholder="https://example.com/start-frame.png" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="field-description">Agnes Video V2.0 要求图片 URL 可由上游公开访问；留空就是文生视频。</p>
+              </section>
+
+              <section class="form-section compact-section">
+                <div class="section-heading">
+                  <span>视频参数</span>
+                  <span class="version-tag" id="videoDurationMeta">约 5 秒</span>
+                </div>
+                <span class="parameter-label">画面尺寸</span>
+                <div class="video-preset-grid" id="videoPresetGrid">
+                  <button type="button" class="selected" data-video-width="1152" data-video-height="768">横向 <small>1152×768</small></button>
+                  <button type="button" data-video-width="768" data-video-height="1152">竖向 <small>768×1152</small></button>
+                  <button type="button" data-video-width="768" data-video-height="768">方形 <small>768×768</small></button>
+                </div>
+                <span class="parameter-label">目标时长</span>
+                <div class="parameter-segmented" id="videoDurationControl" role="group" aria-label="视频时长">
+                  <button type="button" data-video-frames="81">约 3 秒</button>
+                  <button type="button" class="selected" data-video-frames="121">约 5 秒</button>
+                  <button type="button" data-video-frames="241">约 10 秒</button>
+                  <button type="button" data-video-frames="441">约 18 秒</button>
+                </div>
+                <div class="settings-grid video-advanced-grid">
+                  <div class="setting-block">
+                    <label for="videoFrameRate">帧率</label>
+                    <div class="input-shell compact-input-shell"><input id="videoFrameRate" type="number" min="1" max="60" value="24" /></div>
+                  </div>
+                  <div class="setting-block">
+                    <label for="videoSeed">随机种子</label>
+                    <div class="input-shell compact-input-shell"><input id="videoSeed" type="number" placeholder="自动" /></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="section-heading">
+                  <label for="videoNegativePrompt">反向提示词</label>
+                  <span class="section-hint">可选</span>
+                </div>
+                <div class="textarea-shell compact-textarea-shell">
+                  <textarea id="videoNegativePrompt" rows="3" placeholder="例如：画面闪烁、人物变形、文字水印、镜头抖动……"></textarea>
+                </div>
+              </section>
+
+              <div class="capability-callout">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm.75 2.25a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" /></svg>
+                <p><strong>异步生成</strong>提交后页面会每 5 秒查询一次任务状态。视频生成可能持续数分钟，请保持页面开启。</p>
+              </div>
+
+              <div class="action-stack">
+                <button class="generate-button" id="videoGenerateButton" type="button">
+                  <span class="button-icon" aria-hidden="true">▶</span>
+                  <span id="videoGenerateButtonText">创建视频任务</span>
+                </button>
+                <button class="cancel-button" id="cancelVideoButton" type="button" hidden>停止等待</button>
+              </div>
+            </div>
+
             <datalist id="imageModelOptions">
               <option value="sensenova-u1-fast">SenseNova 图片生成</option>
               <option value="agnes-image-2.0-flash">Agnes 文生图 / 图生图 / 多图合成</option>
               <option value="agnes-image-2.1-flash">Agnes 2.1 Flash（使用相同直连配置）</option>
+              <option value="agnes-video-v2.0">Agnes 文生视频 / 图生视频</option>
               <option value="gpt-image-1">OpenAI 兼容图片编辑</option>
             </datalist>
 
@@ -548,6 +685,69 @@
             </div>
             <span id="generationMeta">READY FOR INPUT</span>
           </div>
+        </section>
+
+        <section class="video-panel" id="videoCanvas" aria-label="视频生成结果" hidden>
+          <header class="chat-toolbar">
+            <div>
+              <span class="eyebrow">ASYNC VIDEO OUTPUT</span>
+              <div class="title-line">
+                <h2>Video generation</h2>
+                <span class="result-count" id="videoStatusBadge">READY</span>
+              </div>
+            </div>
+            <button class="toolbar-button" id="clearVideoButton" type="button" disabled>清空结果</button>
+          </header>
+
+          <div class="video-surface">
+            <div class="video-empty-state" id="videoEmptyState">
+              <div class="empty-visual" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="5" width="14" height="14" rx="2"></rect>
+                  <path d="m10 9 4 3-4 3V9Z"></path>
+                  <path d="m17 10 4-2v8l-4-2"></path>
+                </svg>
+              </div>
+              <h3>还没有生成视频</h3>
+              <p>输入视频描述，可选一张公开图片作为起始帧，然后创建 Agnes Video V2.0 任务。</p>
+              <div class="empty-specs"><span>文生视频</span><i></i><span>图生视频</span><i></i><span>自动轮询</span></div>
+            </div>
+
+            <div class="video-progress-state" id="videoProgressState" hidden>
+              <div class="video-progress-icon" aria-hidden="true">▶</div>
+              <h3 id="videoProgressTitle">正在创建视频任务</h3>
+              <p id="videoProgressMessage">正在等待 Agnes 接收请求……</p>
+              <div class="video-progress-track"><span id="videoProgressBar"></span></div>
+              <div class="video-progress-meta"><span id="videoTaskId">TASK —</span><span id="videoProgressPercent">0%</span></div>
+            </div>
+
+            <div class="error-state" id="videoErrorState" hidden>
+              <div class="error-symbol" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="28" height="28" fill="currentColor"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.26 11.733A1.75 1.75 0 0 1 14.26 15.35H1.74A1.75 1.75 0 0 1 .197 12.78L6.457 1.047ZM8 5.25a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0V6A.75.75 0 0 1 8 5.25Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /></svg>
+              </div>
+              <h3>视频任务没有完成</h3>
+              <p id="videoErrorMessage">请检查参数后重试。</p>
+            </div>
+
+            <div class="video-result" id="videoResult" hidden>
+              <div class="video-player-shell">
+                <video id="videoResultPlayer" controls playsinline preload="metadata"></video>
+              </div>
+              <div class="video-result-info">
+                <div><strong id="videoResultTitle">Agnes Video V2.0</strong><span id="videoResultDetails"></span></div>
+                <div class="card-action-group">
+                  <button class="card-action" id="copyVideoUrlButton" type="button">复制地址</button>
+                  <button class="card-action" id="openVideoButton" type="button">打开原视频</button>
+                  <button class="card-action" id="downloadVideoButton" type="button">下载 MP4</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer class="canvas-footer">
+            <div class="footer-status"><span class="mini-led"></span><span>AGNES VIDEO API</span><span class="footer-divider"></span><span>ASYNC TASK</span></div>
+            <span id="videoMeta">READY FOR INPUT</span>
+          </footer>
         </section>
 
         <section class="chat-panel" id="chatCanvas" aria-label="多模态对话" hidden>
