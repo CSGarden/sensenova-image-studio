@@ -6,7 +6,8 @@
 - GitHub 仓库：<https://github.com/CSGarden/sensenova-image-studio>
 - 界面采用 GitHub Primer 风格，并支持浅色、深色主题。
 - 默认模型是 `sensenova-u1-fast`，模型名称可以自由修改。
-- 内置 SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
+- 内置 `agnes-image-2.0-flash` 快捷选择，支持文生图、上传原图改图和 Base64 输出。
+- 内置 Agnes 三种尺寸、SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
 - 提示词模板库包含广告、短视频、漫画、动作戏、口播 B-roll 和教学流程等分镜模板。
 - 新增 `sensenova-6.7-flash-lite` 多模态对话模式，支持连续文本对话、图片 URL 和本地图片理解。
 - 新增“图片编辑”模式，使用兼容 OpenAI `POST /images/edits` 的模型直接上传原图并返回编辑结果。
@@ -42,6 +43,23 @@ Content-Type: application/json
 ```
 
 页面兼容 `data[].url`、`data[].b64_json` 和常见的 `images[]` 返回结构。
+
+### Agnes Image 2.0 Flash
+
+[官方接口文档](https://agnes-ai.com/zh-Hans/docs/agnes-image-20-flash)当前将生成价格标为 `$0 / 张`。
+
+文生图仍调用 `POST /images/generations`，页面会按照 Agnes 文档发送：
+
+```json
+{
+  "model": "agnes-image-2.0-flash",
+  "prompt": "你的提示词",
+  "size": "1024x1024",
+  "return_base64": true
+}
+```
+
+Agnes 当前支持 `1024x768`、`1024x1024`、`768x1024`，文档未声明通用 `n` 参数，因此页面在选择该模型时会限制为单次 1 张。Agnes 官方文档当前显示价格为 `$0 / 张`，但通过 new-api 调用时是否扣费仍取决于渠道倍率和计费配置。
 
 ## 多模态对话
 
@@ -87,6 +105,20 @@ Content-Type: multipart/form-data
 ```
 
 表单字段为 `model`、`prompt`、`size`、`n` 和 `image`。默认编辑模型填写为 `gpt-image-1`，也可以改成你的 new-api 中实际支持 `/images/edits` 的模型。
+
+选择 `agnes-image-2.0-flash` 时，页面会自动改用它自己的图生图协议，不调用 `/images/edits`：
+
+```json
+{
+  "model": "agnes-image-2.0-flash",
+  "prompt": "保留主体，只把背景改成海边日落",
+  "size": "1024x1024",
+  "extra_body": {
+    "image": ["data:image/png;base64,..."],
+    "response_format": "b64_json"
+  }
+}
+```
 
 SenseNova 6.7 Flash-Lite 不支持这个编辑接口，因此不能直接用它返回编辑后的图片。若 new-api 没有配置图片编辑模型，页面会提示接口或模型不支持。
 

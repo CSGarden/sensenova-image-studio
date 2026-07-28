@@ -42,7 +42,16 @@
             target="_blank"
             rel="noreferrer"
           >
-            接口文档
+            SenseNova 文档
+            <span aria-hidden="true">↗</span>
+          </a>
+          <a
+            class="text-link"
+            href="https://agnes-ai.com/zh-Hans/docs/agnes-image-20-flash"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Agnes 文档
             <span aria-hidden="true">↗</span>
           </a>
         </div>
@@ -191,9 +200,16 @@
                   <div class="setting-block model-block">
                     <label for="modelName">模型名称</label>
                     <div class="input-shell compact-input-shell">
-                      <input id="modelName" name="model" value="sensenova-u1-fast" spellcheck="false" required />
+                      <input id="modelName" name="model" value="sensenova-u1-fast" list="imageModelOptions" spellcheck="false" required />
                     </div>
-                    <p class="field-description">默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。</p>
+                    <div class="model-preset-row" aria-label="图片模型快捷选择">
+                      <button class="model-preset-button" type="button" data-generation-model="sensenova-u1-fast">SenseNova U1 Fast</button>
+                      <button class="model-preset-button" type="button" data-generation-model="agnes-image-2.0-flash">
+                        Agnes 2.0 Flash
+                        <span class="free-badge">官方当前 $0/张</span>
+                      </button>
+                    </div>
+                    <p class="field-description" id="generationModelDescription">默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。</p>
                   </div>
 
                   <div class="setting-block">
@@ -217,6 +233,10 @@
                         </svg>
                       </button>
                       <div class="custom-select-menu" id="sizeSelectMenu" role="listbox" tabindex="-1" hidden>
+                        <div class="select-group-label">Agnes Image 2.0 Flash</div>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-provider="agnes" data-value="1024x768" data-label="4:3 · 横向" data-meta="Agnes · 1024×768">4:3 · 横向 <small>1024×768</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-provider="agnes" data-value="1024x1024" data-label="1:1 · 方形" data-meta="Agnes · 1024×1024">1:1 · 方形 <small>1024×1024</small></button>
+                        <button class="custom-select-option" type="button" role="option" aria-selected="false" data-provider="agnes" data-value="768x1024" data-label="3:4 · 竖向" data-meta="Agnes · 768×1024">3:4 · 竖向 <small>768×1024</small></button>
                         <div class="select-group-label">SenseNova 2K</div>
                         <button class="custom-select-option selected" type="button" role="option" aria-selected="true" data-value="2752x1536" data-label="16:9 · 横向" data-meta="SenseNova · 2752×1536">16:9 · 横向 <small>2752×1536</small></button>
                         <button class="custom-select-option" type="button" role="option" aria-selected="false" data-value="1536x2752" data-label="9:16 · 竖向" data-meta="SenseNova · 1536×2752">9:16 · 竖向 <small>1536×2752</small></button>
@@ -270,9 +290,16 @@
                   <span class="required-badge">必填</span>
                 </div>
                 <div class="input-shell compact-input-shell">
-                  <input id="editModelName" value="gpt-image-1" placeholder="例如 gpt-image-1 / 你的编辑模型" spellcheck="false" />
+                  <input id="editModelName" value="gpt-image-1" list="imageModelOptions" placeholder="例如 agnes-image-2.0-flash" spellcheck="false" />
                 </div>
-                <p class="field-description">模型必须支持 new-api 的 <code>/images/edits</code> 接口；Flash-Lite 不能直接编辑图片。</p>
+                <div class="model-preset-row" aria-label="编辑模型快捷选择">
+                  <button class="model-preset-button" type="button" data-edit-model="agnes-image-2.0-flash">
+                    Agnes 2.0 Flash
+                    <span class="free-badge">可改图</span>
+                  </button>
+                  <button class="model-preset-button" type="button" data-edit-model="gpt-image-1">gpt-image-1</button>
+                </div>
+                <p class="field-description" id="editModelDescription">通用编辑模型走 <code>/images/edits</code>；Agnes 会自动改用 <code>/images/generations</code> 的图生图协议。</p>
               </section>
 
               <section class="form-section">
@@ -300,7 +327,7 @@
                   <div class="edit-upload-placeholder" id="editUploadPlaceholder">
                     <svg viewBox="0 0 16 16" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M1.75 2.5A1.75 1.75 0 0 0 0 4.25v7.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0 0 16 11.75v-7.5A1.75 1.75 0 0 0 14.25 2.5H1.75Zm12.5 1.5a.25.25 0 0 1 .25.25v5.19l-2.22-2.22a.75.75 0 0 0-1.06 0l-2.47 2.47-1.47-1.47a.75.75 0 0 0-1.06 0L1.5 12.94V4.25A.25.25 0 0 1 1.75 4h12.5ZM2.56 12l4.19-4.19 1.47 1.47a.75.75 0 0 0 1.06 0l2.47-2.47 2.75 2.75v2.19a.25.25 0 0 1-.25.25H2.56Z" /></svg>
                     <strong>点击选择或拖拽原图</strong>
-                    <span>图片会以 multipart/form-data 上传到 new-api</span>
+                    <span id="editUploadTransport">图片会按模型要求上传到 new-api</span>
                   </div>
                   <div class="edit-upload-preview" id="editUploadPreview" hidden>
                     <img id="editImagePreview" alt="待编辑原图" />
@@ -312,7 +339,7 @@
 
               <div class="capability-callout edit-capability-callout">
                 <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm.75 2.25a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" /></svg>
-                <p><strong>编辑接口要求</strong>如果接口返回 404 或提示模型不支持，请在 new-api 中启用支持 `/images/edits` 的模型。SenseNova Flash-Lite 仅负责理解图片。</p>
+                <p><strong id="editProtocolBadge">编辑接口要求</strong><span id="editCapabilityText">如果接口返回 404 或提示模型不支持，请确认 new-api 已启用对应模型。SenseNova Flash-Lite 仅负责理解图片，不能输出改图结果。</span></p>
               </div>
 
               <div class="action-stack">
@@ -323,6 +350,12 @@
                 <button class="cancel-button" id="cancelEditButton" type="button" hidden>取消本次编辑</button>
               </div>
             </div>
+
+            <datalist id="imageModelOptions">
+              <option value="sensenova-u1-fast">SenseNova 图片生成</option>
+              <option value="agnes-image-2.0-flash">Agnes 文生图 / 图生图 / 多图合成</option>
+              <option value="gpt-image-1">OpenAI 兼容图片编辑</option>
+            </datalist>
 
             <div class="chat-controls" id="chatControls" hidden>
               <section class="form-section">
@@ -415,7 +448,7 @@
                 <div class="empty-specs">
                   <span>OpenAI Images API</span>
                   <i></i>
-                  <span>16 种尺寸</span>
+                  <span>多模型尺寸适配</span>
                   <i></i>
                   <span>自定义模型</span>
               </div>

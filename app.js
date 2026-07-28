@@ -11,6 +11,9 @@ const STORAGE_KEYS = {
   editModel: 'nova-canvas-edit-model',
 };
 
+const AGNES_MODEL = 'agnes-image-2.0-flash';
+const AGNES_SIZES = new Set(['1024x768', '1024x1024', '768x1024']);
+
 const STYLE_SUFFIXES = {
   none: '',
   editorial:
@@ -187,6 +190,7 @@ const els = {
   sizeSelectLabel: document.querySelector('#sizeSelectLabel'),
   sizeSelectMeta: document.querySelector('#sizeSelectMeta'),
   modelName: document.querySelector('#modelName'),
+  generationModelDescription: document.querySelector('#generationModelDescription'),
   quantityControl: document.querySelector('#quantityControl'),
   generateButton: document.querySelector('#generateButton'),
   generateButtonText: document.querySelector('#generateButtonText'),
@@ -250,6 +254,10 @@ const els = {
   sendChatButton: document.querySelector('#sendChatButton'),
   chatMeta: document.querySelector('#chatMeta'),
   editModelName: document.querySelector('#editModelName'),
+  editModelDescription: document.querySelector('#editModelDescription'),
+  editUploadTransport: document.querySelector('#editUploadTransport'),
+  editProtocolBadge: document.querySelector('#editProtocolBadge'),
+  editCapabilityText: document.querySelector('#editCapabilityText'),
   editPrompt: document.querySelector('#editPrompt'),
   editUploadZone: document.querySelector('#editUploadZone'),
   editUploadPlaceholder: document.querySelector('#editUploadPlaceholder'),
@@ -336,6 +344,7 @@ function restorePreferences() {
 
   updatePromptCount();
   updateRatioPreview();
+  updateModelCapabilities();
 }
 
 function applyTheme(theme) {
@@ -349,6 +358,7 @@ function switchMode(mode) {
   const isChat = mode === 'chat';
   const isEdit = mode === 'edit';
   const isGeneration = !isChat && !isEdit;
+  const isAgnesEdit = isEdit && isAgnesImageModel(els.editModelName.value);
   state.mode = isChat ? 'chat' : isEdit ? 'edit' : 'generation';
 
   els.generationControls.hidden = !isGeneration;
@@ -368,9 +378,11 @@ function switchMode(mode) {
   els.workspaceDescription.textContent = isChat
     ? '使用 Flash-Lite 进行文本对话、图片理解和改图提示词设计。'
     : isEdit
-      ? '上传原图并调用支持 /images/edits 的模型生成编辑结果。'
+      ? isAgnesEdit
+        ? '上传原图，通过 Agnes Image 2.0 Flash 的图生图协议直接生成改图结果。'
+        : '上传原图并调用支持 /images/edits 的模型生成编辑结果。'
       : '连接兼容 OpenAI Images API 的服务，并配置模型与创作参数。';
-  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : isEdit ? 'Images Edits' : 'Images API';
+  els.workspaceBadge.textContent = isChat ? 'Flash-Lite' : isEdit ? (isAgnesEdit ? 'Agnes Img2Img' : 'Images Edits') : 'Images API';
 
   els.canvasEyebrow.textContent = isEdit ? 'EDITED OUTPUT' : 'LIVE OUTPUT';
   els.canvasTitle.textContent = isEdit ? 'Edited images' : 'Generations';
@@ -378,6 +390,8 @@ function switchMode(mode) {
   els.emptyDescription.textContent = isEdit
     ? '上传原图并写下修改要求，编辑结果会在这里出现。'
     : '在左侧写下画面构想，选择比例与风格，生成结果会在这里出现。';
+
+  updateModelCapabilities();
 
   window.requestAnimationFrame(() => {
     if (isChat) els.chatInput.focus({ preventScroll: true });
@@ -875,21 +889,41 @@ async function editImage(event) {
     return;
   }
 
+  const useAgnes = isAgnesImageModel(model);
+  if (useAgnes) ensureAgnesSize();
+
   let endpoint;
+  let body;
+  let headers;
   try {
-    endpoint = buildEditEndpoint(els.baseUrl.value);
+    endpoint = useAgnes ? buildEndpoint(els.baseUrl.value) : buildEditEndpoint(els.baseUrl.value);
+    if (useAgnes) {
+      const imageDataUrl = await readFileAsDataUrl(state.editImageFile);
+      body = JSON.stringify(
+        buildAgnesRequestBody({
+          prompt,
+          size: els.imageSize.value,
+          images: [imageDataUrl],
+        }),
+      );
+      headers = {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      };
+    } else {
+      body = new FormData();
+      body.append('model', model);
+      body.append('prompt', prompt);
+      body.append('size', els.imageSize.value);
+      body.append('n', String(state.count));
+      body.append('image', state.editImageFile, state.editImageFile.name);
+      headers = { Authorization: `Bearer ${apiKey}` };
+    }
   } catch (error) {
     els.baseUrl.focus();
-    showToast(error.message, 'error');
+    showToast(error.message || '无法准备图片编辑请求', 'error');
     return;
   }
-
-  const body = new FormData();
-  body.append('model', model);
-  body.append('prompt', prompt);
-  body.append('size', els.imageSize.value);
-  body.append('n', String(state.count));
-  body.append('image', state.editImageFile, state.editImageFile.name);
 
   persistConnectionSettings();
   persistApiKey();
@@ -904,7 +938,7 @@ async function editImage(event) {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers,
       body,
       signal: state.controller.signal,
     });
@@ -925,7 +959,9 @@ async function editImage(event) {
   } catch (error) {
     if (error.name === 'AbortError') showError('本次图片编辑已取消。');
     else if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      showError('无法连接图片编辑接口。请确认 new-api 已配置 /images/edits，并允许浏览器跨域上传。');
+      showError(useAgnes
+        ? '无法连接 Agnes 图片接口。请确认 new-api 已配置 agnes-image-2.0-flash，并允许浏览器跨域请求。'
+        : '无法连接图片编辑接口。请确认 new-api 已配置 /images/edits，并允许浏览器跨域上传。');
     } else {
       showError(error.message || '图片编辑失败，请检查模型和接口配置。');
     }
@@ -965,6 +1001,10 @@ function updateRatioPreview() {
 
 function setSizeOption(option, { close = true } = {}) {
   if (!option) return;
+  if (isAgnesImageModel(getActiveImageModel()) && !AGNES_SIZES.has(option.dataset.value)) {
+    showToast('Agnes 仅支持 1024×768、1024×1024、768×1024', 'error');
+    return;
+  }
 
   els.imageSize.value = option.dataset.value;
   els.sizeSelectLabel.textContent = option.dataset.label;
@@ -1107,12 +1147,91 @@ function setStyle(style) {
 }
 
 function setCount(count) {
+  if (isAgnesImageModel(els.modelName.value) && count !== 1) return;
   state.count = count;
   els.quantityControl.querySelectorAll('[data-count]').forEach((button) => {
     const selected = Number(button.dataset.count) === count;
     button.classList.toggle('selected', selected);
     button.setAttribute('aria-pressed', String(selected));
   });
+}
+
+function isAgnesImageModel(model) {
+  return model.trim().toLowerCase() === AGNES_MODEL;
+}
+
+function getActiveImageModel() {
+  return state.mode === 'edit' ? els.editModelName.value : els.modelName.value;
+}
+
+function selectAgnesDefaultSize() {
+  const option = els.sizeSelectMenu.querySelector('[data-provider="agnes"][data-value="1024x1024"]');
+  if (option) setSizeOption(option, { close: false });
+}
+
+function ensureAgnesSize() {
+  if (!AGNES_SIZES.has(els.imageSize.value)) selectAgnesDefaultSize();
+  return els.imageSize.value;
+}
+
+function updateModelCapabilities() {
+  const generationUsesAgnes = isAgnesImageModel(els.modelName.value);
+  const editUsesAgnes = isAgnesImageModel(els.editModelName.value);
+  const activeUsesAgnes = state.mode === 'edit' ? editUsesAgnes : state.mode === 'generation' && generationUsesAgnes;
+
+  els.generationModelDescription.textContent = generationUsesAgnes
+    ? 'Agnes 支持文生图，并以 Base64 返回结果。官方文档当前价格为 $0/张；new-api 是否扣费以渠道配置为准。'
+    : '默认是 SenseNova U1 Fast，也可以填写 new-api 中的其他图片模型。';
+
+  els.editModelDescription.textContent = editUsesAgnes
+    ? 'Agnes 使用 /images/generations，并在 extra_body.image 中传入原图，不会调用 /images/edits。'
+    : '通用编辑模型使用 /images/edits；模型必须支持 multipart/form-data 图片上传。';
+  els.editUploadTransport.textContent = editUsesAgnes
+    ? '原图会转为 Data URI Base64，通过 JSON 发送到 new-api'
+    : '原图会以 multipart/form-data 上传到 new-api';
+  els.editProtocolBadge.textContent = editUsesAgnes ? 'Agnes 图生图' : '编辑接口要求';
+  els.editCapabilityText.textContent = editUsesAgnes
+    ? '支持真实改图，结果使用 Base64 返回。可用尺寸为 1024×768、1024×1024、768×1024；官方当前价格为 $0/张。'
+    : '如果接口返回 404 或提示模型不支持，请确认 new-api 已启用对应编辑模型。SenseNova Flash-Lite 仅负责理解图片，不能输出改图结果。';
+
+  document.querySelectorAll('[data-generation-model]').forEach((button) => {
+    button.classList.toggle('selected', button.dataset.generationModel === els.modelName.value.trim());
+  });
+  document.querySelectorAll('[data-edit-model]').forEach((button) => {
+    button.classList.toggle('selected', button.dataset.editModel === els.editModelName.value.trim());
+  });
+
+  els.quantityControl.querySelectorAll('[data-count]').forEach((button) => {
+    button.disabled = generationUsesAgnes && Number(button.dataset.count) !== 1;
+  });
+  if (generationUsesAgnes && state.count !== 1) setCount(1);
+  if (activeUsesAgnes) ensureAgnesSize();
+
+  if (state.mode === 'edit') {
+    els.workspaceDescription.textContent = editUsesAgnes
+      ? '上传原图，通过 Agnes Image 2.0 Flash 的图生图协议直接生成改图结果。'
+      : '上传原图并调用支持 /images/edits 的模型生成编辑结果。';
+    els.workspaceBadge.textContent = editUsesAgnes ? 'Agnes Img2Img' : 'Images Edits';
+  }
+}
+
+function buildAgnesRequestBody({ prompt, size, images = [] }) {
+  const body = {
+    model: AGNES_MODEL,
+    prompt,
+    size,
+  };
+
+  if (images.length) {
+    body.extra_body = {
+      image: images,
+      response_format: 'b64_json',
+    };
+  } else {
+    body.return_base64 = true;
+  }
+
+  return body;
 }
 
 function buildEndpoint(input) {
@@ -1276,7 +1395,7 @@ function renderResults(results, meta) {
     const image = document.createElement('img');
     image.className = 'result-image';
     image.src = result.src;
-    image.alt = `SenseNova 生成图片 ${index + 1}`;
+    image.alt = `${meta.model} 生成图片 ${index + 1}`;
     image.referrerPolicy = 'no-referrer';
     image.loading = index === 0 ? 'eager' : 'lazy';
     image.addEventListener('error', () => {
@@ -1291,7 +1410,7 @@ function renderResults(results, meta) {
     const resultMeta = document.createElement('div');
     resultMeta.className = 'result-meta';
     const resultTitle = document.createElement('strong');
-    resultTitle.textContent = `SenseNova Render ${index + 1}`;
+    resultTitle.textContent = `Image Output ${index + 1}`;
     const resultDetails = document.createElement('span');
     resultDetails.textContent = `${meta.size} · ${meta.model}`;
     resultMeta.append(resultTitle, resultDetails);
@@ -1352,7 +1471,7 @@ function triggerDownload(href, filename) {
 }
 
 async function downloadResult(result, index, quiet = false) {
-  const filename = `sensenova-${Date.now()}-${index + 1}.png`;
+  const filename = `generated-image-${Date.now()}-${index + 1}.png`;
 
   if (result.kind === 'base64') {
     triggerDownload(result.src, filename);
@@ -1421,6 +1540,7 @@ async function generateImages(event) {
   const apiKey = els.apiKey.value.trim();
   const model = els.modelName.value.trim();
   const prompt = els.prompt.value.trim();
+  const useAgnes = isAgnesImageModel(model);
 
   if (!apiKey) {
     els.apiKey.focus();
@@ -1451,6 +1571,19 @@ async function generateImages(event) {
   persistApiKey();
   safeStorageSet(STORAGE_KEYS.prompt, prompt);
 
+  if (useAgnes) ensureAgnesSize();
+  const requestBody = useAgnes
+    ? buildAgnesRequestBody({
+        prompt: buildFinalPrompt(prompt),
+        size: els.imageSize.value,
+      })
+    : {
+        model,
+        prompt: buildFinalPrompt(prompt),
+        size: els.imageSize.value,
+        n: state.count,
+      };
+
   state.controller = new AbortController();
   setBusy(true);
   setView('loading');
@@ -1465,12 +1598,7 @@ async function generateImages(event) {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        prompt: buildFinalPrompt(prompt),
-        size: els.imageSize.value,
-        n: state.count,
-      }),
+      body: JSON.stringify(requestBody),
       signal: state.controller.signal,
     });
 
@@ -1532,6 +1660,22 @@ els.rememberKey.addEventListener('change', persistApiKey);
 els.apiKey.addEventListener('change', persistApiKey);
 els.baseUrl.addEventListener('change', persistConnectionSettings);
 els.modelName.addEventListener('change', persistConnectionSettings);
+els.modelName.addEventListener('input', updateModelCapabilities);
+els.editModelName.addEventListener('input', updateModelCapabilities);
+document.querySelectorAll('[data-generation-model]').forEach((button) => {
+  button.addEventListener('click', () => {
+    els.modelName.value = button.dataset.generationModel;
+    persistConnectionSettings();
+    updateModelCapabilities();
+  });
+});
+document.querySelectorAll('[data-edit-model]').forEach((button) => {
+  button.addEventListener('click', () => {
+    els.editModelName.value = button.dataset.editModel;
+    safeStorageSet(STORAGE_KEYS.editModel, els.editModelName.value);
+    updateModelCapabilities();
+  });
+});
 els.chatModelName.addEventListener('change', () => {
   safeStorageSet(STORAGE_KEYS.chatModel, els.chatModelName.value.trim());
 });
@@ -1652,6 +1796,7 @@ els.clearChatButton.addEventListener('click', clearChat);
 
 els.editModelName.addEventListener('change', () => {
   safeStorageSet(STORAGE_KEYS.editModel, els.editModelName.value.trim());
+  updateModelCapabilities();
 });
 els.editButton.addEventListener('click', editImage);
 els.cancelEditButton.addEventListener('click', cancelGeneration);

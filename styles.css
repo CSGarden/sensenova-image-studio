@@ -369,6 +369,51 @@ a:focus-visible {
   font-weight: 400;
 }
 
+.model-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.model-preset-button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--control-bgColor-rest);
+  box-shadow: var(--shadow-resting-small);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.model-preset-button:hover {
+  color: var(--accent-fgColor-default);
+  border-color: var(--accent-emphasis);
+  background: var(--control-bgColor-hover);
+}
+
+.model-preset-button.selected {
+  color: var(--accent-fgColor-default);
+  border-color: color-mix(in srgb, var(--accent-emphasis) 62%, var(--borderColor-default));
+  background: color-mix(in srgb, var(--accent-emphasis) 8%, var(--bgColor-default));
+}
+
+.free-badge {
+  padding: 1px 5px;
+  color: var(--success-fgColor-default);
+  border: 1px solid color-mix(in srgb, var(--success-fgColor-default) 28%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success-fgColor-default) 9%, transparent);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .compact-textarea-shell textarea {
   min-height: 112px;
   font-size: 11px;
@@ -1037,6 +1082,12 @@ textarea {
 
 .quantity-button:hover {
   background: var(--control-bgColor-hover);
+}
+
+.quantity-button:disabled {
+  color: var(--fgColor-muted);
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .quantity-button.selected {
