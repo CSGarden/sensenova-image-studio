@@ -8,6 +8,8 @@
 - 默认模型是 `sensenova-u1-fast`，模型名称可以自由修改。
 - 内置 `agnes-image-2.0-flash` 快捷选择，支持文生图、上传原图改图和 Base64 输出。
 - 内置 Agnes 三种尺寸、SenseNova 2K 尺寸及常见 OpenAI 图片尺寸。
+- Agnes 支持独立填写官方 Base URL 与 API Key，也可以继续通过 new-api 转发。
+- 页面会识别 `agnes-image-2.0-flash` 与 `agnes-image-2.1-flash`，并复用同一套 Agnes 连接配置。
 - 提示词模板库包含广告、短视频、漫画、动作戏、口播 B-roll 和教学流程等分镜模板。
 - 新增 `sensenova-6.7-flash-lite` 多模态对话模式，支持连续文本对话、图片 URL 和本地图片理解。
 - 新增“图片编辑”模式，使用兼容 OpenAI `POST /images/edits` 的模型直接上传原图并返回编辑结果。
@@ -60,6 +62,8 @@ Content-Type: application/json
 ```
 
 Agnes 当前支持 `1024x768`、`1024x1024`、`768x1024`，文档未声明通用 `n` 参数，因此页面在选择该模型时会限制为单次 1 张。Agnes 官方文档当前显示价格为 `$0 / 张`，但通过 new-api 调用时是否扣费仍取决于渠道倍率和计费配置。
+
+页面默认让 Agnes 直连 `https://apihub.agnes-ai.com/v1`，因为部分 new-api 版本会在图片请求结构化转发时过滤 `return_base64` 和 `extra_body`。如果要通过 new-api，请在对应渠道开启“请求体透传（Pass-through body）”，再在页面的 Agnes 连接区域切换为“通过 new-api”。
 
 ## 多模态对话
 

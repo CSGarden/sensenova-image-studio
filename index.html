@@ -84,7 +84,7 @@
           </div>
 
           <form id="generationForm">
-            <section class="form-section key-section">
+            <section class="form-section key-section" id="newApiConnectionSection">
               <div class="section-heading">
                 <label for="baseUrl">new-api 地址</label>
                 <span class="required-badge">必填</span>
@@ -130,6 +130,66 @@
                   仅在此设备记住
                 </label>
                 <span>直接发送至上方接口</span>
+              </div>
+            </section>
+
+            <section class="form-section agnes-connection-section" id="agnesConnectionSection" hidden>
+              <div class="section-heading">
+                <span>Agnes 连接</span>
+                <span class="version-tag">独立配置</span>
+              </div>
+              <div class="agnes-route-control" id="agnesRouteControl" role="group" aria-label="Agnes 接入方式">
+                <button class="selected" type="button" data-agnes-route="direct" aria-pressed="true">直连 Agnes</button>
+                <button type="button" data-agnes-route="newapi" aria-pressed="false">通过 new-api</button>
+              </div>
+
+              <div class="agnes-direct-fields" id="agnesDirectFields">
+                <div class="section-heading">
+                  <label for="agnesBaseUrl">Agnes Base URL</label>
+                  <span class="required-badge">必填</span>
+                </div>
+                <div class="input-shell url-input-shell">
+                  <span class="input-icon" aria-hidden="true">↗</span>
+                  <input
+                    id="agnesBaseUrl"
+                    type="url"
+                    value="https://apihub.agnes-ai.com/v1"
+                    placeholder="https://apihub.agnes-ai.com/v1"
+                    autocomplete="url"
+                    spellcheck="false"
+                  />
+                </div>
+
+                <div class="section-heading">
+                  <label for="agnesApiKey">Agnes API Key</label>
+                  <span class="required-badge">必填</span>
+                </div>
+                <div class="input-shell key-input-shell">
+                  <span class="input-icon" aria-hidden="true">✦</span>
+                  <input
+                    id="agnesApiKey"
+                    type="password"
+                    placeholder="Agnes API Key"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button class="icon-button" id="toggleAgnesKey" type="button" aria-label="显示 Agnes API Key">
+                    <span id="agnesKeyToggleIcon" aria-hidden="true">◉</span>
+                  </button>
+                </div>
+                <div class="field-footnote">
+                  <label class="check-label">
+                    <input id="rememberAgnesKey" type="checkbox" />
+                    <span class="custom-check" aria-hidden="true"></span>
+                    仅在此设备记住
+                  </label>
+                  <span>仅用于 Agnes 请求</span>
+                </div>
+              </div>
+
+              <div class="capability-callout agnes-route-callout">
+                <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm.75 2.25a.75.75 0 0 0-1.5 0v5a.75.75 0 0 0 1.5 0v-5Z" /></svg>
+                <p><strong id="agnesRouteTitle">直连官方接口</strong><span id="agnesRouteDescription">绕过 new-api 的图片字段过滤，完整发送 return_base64 与 extra_body。若浏览器提示跨域失败，可切换到 new-api 并开启渠道“请求体透传”。</span></p>
               </div>
             </section>
 
@@ -354,6 +414,7 @@
             <datalist id="imageModelOptions">
               <option value="sensenova-u1-fast">SenseNova 图片生成</option>
               <option value="agnes-image-2.0-flash">Agnes 文生图 / 图生图 / 多图合成</option>
+              <option value="agnes-image-2.1-flash">Agnes 2.1 Flash（使用相同直连配置）</option>
               <option value="gpt-image-1">OpenAI 兼容图片编辑</option>
             </datalist>
 

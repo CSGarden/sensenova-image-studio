@@ -9,6 +9,10 @@ const STORAGE_KEYS = {
   chatSystem: 'nova-canvas-chat-system',
   chatReasoning: 'nova-canvas-chat-reasoning',
   editModel: 'nova-canvas-edit-model',
+  agnesRoute: 'nova-canvas-agnes-route',
+  agnesBaseUrl: 'nova-canvas-agnes-base-url',
+  rememberAgnesKey: 'nova-canvas-remember-agnes-key',
+  agnesApiKey: 'nova-canvas-agnes-api-key',
 };
 
 const AGNES_MODEL = 'agnes-image-2.0-flash';
@@ -179,6 +183,17 @@ const els = {
   rememberKey: document.querySelector('#rememberKey'),
   toggleKey: document.querySelector('#toggleKey'),
   keyToggleIcon: document.querySelector('#keyToggleIcon'),
+  newApiConnectionSection: document.querySelector('#newApiConnectionSection'),
+  agnesConnectionSection: document.querySelector('#agnesConnectionSection'),
+  agnesRouteControl: document.querySelector('#agnesRouteControl'),
+  agnesDirectFields: document.querySelector('#agnesDirectFields'),
+  agnesBaseUrl: document.querySelector('#agnesBaseUrl'),
+  agnesApiKey: document.querySelector('#agnesApiKey'),
+  rememberAgnesKey: document.querySelector('#rememberAgnesKey'),
+  toggleAgnesKey: document.querySelector('#toggleAgnesKey'),
+  agnesKeyToggleIcon: document.querySelector('#agnesKeyToggleIcon'),
+  agnesRouteTitle: document.querySelector('#agnesRouteTitle'),
+  agnesRouteDescription: document.querySelector('#agnesRouteDescription'),
   prompt: document.querySelector('#prompt'),
   promptCount: document.querySelector('#promptCount'),
   styleGrid: document.querySelector('#styleGrid'),
@@ -291,6 +306,7 @@ const state = {
   attachmentId: 0,
   editImageFile: null,
   editObjectUrl: null,
+  agnesRoute: 'direct',
 };
 
 function safeStorageGet(key) {
@@ -327,6 +343,9 @@ function restorePreferences() {
   const storedChatSystem = safeStorageGet(STORAGE_KEYS.chatSystem);
   const storedChatReasoning = safeStorageGet(STORAGE_KEYS.chatReasoning);
   const storedEditModel = safeStorageGet(STORAGE_KEYS.editModel);
+  const storedAgnesRoute = safeStorageGet(STORAGE_KEYS.agnesRoute);
+  const storedAgnesBaseUrl = safeStorageGet(STORAGE_KEYS.agnesBaseUrl);
+  const remembersAgnesKey = safeStorageGet(STORAGE_KEYS.rememberAgnesKey) === 'true';
 
   if (storedBaseUrl) els.baseUrl.value = storedBaseUrl;
   if (storedModel) els.modelName.value = storedModel;
@@ -334,13 +353,17 @@ function restorePreferences() {
   if (storedChatModel) els.chatModelName.value = storedChatModel;
   if (storedChatSystem) els.chatSystemPrompt.value = storedChatSystem;
   if (storedEditModel) els.editModelName.value = storedEditModel;
+  if (storedAgnesBaseUrl) els.agnesBaseUrl.value = storedAgnesBaseUrl;
 
   els.rememberKey.checked = remembersKey;
   if (remembersKey) els.apiKey.value = safeStorageGet(STORAGE_KEYS.apiKey) || '';
+  els.rememberAgnesKey.checked = remembersAgnesKey;
+  if (remembersAgnesKey) els.agnesApiKey.value = safeStorageGet(STORAGE_KEYS.agnesApiKey) || '';
 
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
   applyTheme(storedTheme || (prefersDark ? 'dark' : 'light'));
   setChatReasoning(storedChatReasoning || 'medium');
+  setAgnesRoute(storedAgnesRoute || 'direct', { persist: false });
 
   updatePromptCount();
   updateRatioPreview();
@@ -352,6 +375,56 @@ function applyTheme(theme) {
   document.documentElement.dataset.colorMode = resolved;
   els.themeToggle?.setAttribute('aria-label', resolved === 'dark' ? '切换浅色模式' : '切换深色模式');
   els.themeToggle?.setAttribute('title', resolved === 'dark' ? '切换浅色模式' : '切换深色模式');
+}
+
+function persistAgnesApiKey() {
+  safeStorageSet(STORAGE_KEYS.rememberAgnesKey, String(els.rememberAgnesKey.checked));
+  if (els.rememberAgnesKey.checked) {
+    safeStorageSet(STORAGE_KEYS.agnesApiKey, els.agnesApiKey.value.trim());
+  } else {
+    safeStorageRemove(STORAGE_KEYS.agnesApiKey);
+  }
+}
+
+function persistAgnesSettings() {
+  safeStorageSet(STORAGE_KEYS.agnesRoute, state.agnesRoute);
+  safeStorageSet(STORAGE_KEYS.agnesBaseUrl, els.agnesBaseUrl.value.trim());
+  persistAgnesApiKey();
+}
+
+function setAgnesRoute(route, { persist = true } = {}) {
+  state.agnesRoute = route === 'newapi' ? 'newapi' : 'direct';
+  els.agnesRouteControl.querySelectorAll('[data-agnes-route]').forEach((button) => {
+    const selected = button.dataset.agnesRoute === state.agnesRoute;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  els.agnesDirectFields.hidden = state.agnesRoute !== 'direct';
+  els.agnesRouteTitle.textContent = state.agnesRoute === 'direct' ? '直连官方接口' : '通过 new-api 转发';
+  els.agnesRouteDescription.textContent = state.agnesRoute === 'direct'
+    ? '绕过 new-api 的图片字段过滤，完整发送 return_base64 与 extra_body。若浏览器提示跨域失败，可切换到 new-api 并开启渠道“请求体透传”。'
+    : 'new-api 图片请求会过滤未识别字段。请在 Agnes 渠道设置中开启“请求体透传”，否则 return_base64 与 extra_body 可能无法到达上游。';
+  if (persist) persistAgnesSettings();
+  updateModelCapabilities();
+}
+
+function getAgnesConnection() {
+  if (state.agnesRoute === 'direct') {
+    return {
+      baseUrl: els.agnesBaseUrl.value.trim(),
+      apiKey: els.agnesApiKey.value.trim(),
+      baseUrlInput: els.agnesBaseUrl,
+      apiKeyInput: els.agnesApiKey,
+      route: 'direct',
+    };
+  }
+  return {
+    baseUrl: els.baseUrl.value.trim(),
+    apiKey: els.apiKey.value.trim(),
+    baseUrlInput: els.baseUrl,
+    apiKeyInput: els.apiKey,
+    route: 'newapi',
+  };
 }
 
 function switchMode(mode) {
@@ -866,12 +939,16 @@ async function editImage(event) {
   event?.preventDefault();
   if (state.controller) return;
 
-  const apiKey = els.apiKey.value.trim();
   const model = els.editModelName.value.trim();
   const prompt = els.editPrompt.value.trim();
+  const useAgnes = isAgnesImageModel(model);
+  const connection = useAgnes
+    ? getAgnesConnection()
+    : { baseUrl: els.baseUrl.value.trim(), apiKey: els.apiKey.value.trim(), baseUrlInput: els.baseUrl, apiKeyInput: els.apiKey };
+  const apiKey = connection.apiKey;
   if (!apiKey) {
-    els.apiKey.focus();
-    showToast('请输入 API Key', 'error');
+    connection.apiKeyInput.focus();
+    showToast(useAgnes ? '请输入 Agnes API Key' : '请输入 API Key', 'error');
     return;
   }
   if (!model) {
@@ -889,18 +966,18 @@ async function editImage(event) {
     return;
   }
 
-  const useAgnes = isAgnesImageModel(model);
   if (useAgnes) ensureAgnesSize();
 
   let endpoint;
   let body;
   let headers;
   try {
-    endpoint = useAgnes ? buildEndpoint(els.baseUrl.value) : buildEditEndpoint(els.baseUrl.value);
+    endpoint = useAgnes ? buildEndpoint(connection.baseUrl) : buildEditEndpoint(connection.baseUrl);
     if (useAgnes) {
       const imageDataUrl = await readFileAsDataUrl(state.editImageFile);
       body = JSON.stringify(
         buildAgnesRequestBody({
+          model,
           prompt,
           size: els.imageSize.value,
           images: [imageDataUrl],
@@ -920,13 +997,14 @@ async function editImage(event) {
       headers = { Authorization: `Bearer ${apiKey}` };
     }
   } catch (error) {
-    els.baseUrl.focus();
+    connection.baseUrlInput.focus();
     showToast(error.message || '无法准备图片编辑请求', 'error');
     return;
   }
 
   persistConnectionSettings();
   persistApiKey();
+  if (useAgnes) persistAgnesSettings();
   safeStorageSet(STORAGE_KEYS.editModel, model);
   state.controller = new AbortController();
   setEditBusy(true);
@@ -960,7 +1038,9 @@ async function editImage(event) {
     if (error.name === 'AbortError') showError('本次图片编辑已取消。');
     else if (error instanceof TypeError && /fetch/i.test(error.message)) {
       showError(useAgnes
-        ? '无法连接 Agnes 图片接口。请确认 new-api 已配置 agnes-image-2.0-flash，并允许浏览器跨域请求。'
+        ? connection.route === 'direct'
+          ? '无法直连 Agnes。请检查 Agnes URL、Key，以及浏览器是否被 CORS 或网络策略拦截。'
+          : '无法连接 Agnes 的 new-api 转发。请在渠道中开启请求体透传，并确认上游 URL、Key 和超时设置。'
         : '无法连接图片编辑接口。请确认 new-api 已配置 /images/edits，并允许浏览器跨域上传。');
     } else {
       showError(error.message || '图片编辑失败，请检查模型和接口配置。');
@@ -1157,7 +1237,7 @@ function setCount(count) {
 }
 
 function isAgnesImageModel(model) {
-  return model.trim().toLowerCase() === AGNES_MODEL;
+  return /^agnes-image-2\.[01]-flash$/i.test(model.trim());
 }
 
 function getActiveImageModel() {
@@ -1178,6 +1258,14 @@ function updateModelCapabilities() {
   const generationUsesAgnes = isAgnesImageModel(els.modelName.value);
   const editUsesAgnes = isAgnesImageModel(els.editModelName.value);
   const activeUsesAgnes = state.mode === 'edit' ? editUsesAgnes : state.mode === 'generation' && generationUsesAgnes;
+  const usesDirectAgnes = activeUsesAgnes && state.agnesRoute === 'direct';
+
+  els.agnesConnectionSection.hidden = !activeUsesAgnes;
+  els.newApiConnectionSection.hidden = usesDirectAgnes;
+  els.baseUrl.required = !usesDirectAgnes;
+  els.apiKey.required = !usesDirectAgnes;
+  els.agnesBaseUrl.required = usesDirectAgnes;
+  els.agnesApiKey.required = usesDirectAgnes;
 
   els.generationModelDescription.textContent = generationUsesAgnes
     ? 'Agnes 支持文生图，并以 Base64 返回结果。官方文档当前价格为 $0/张；new-api 是否扣费以渠道配置为准。'
@@ -1187,11 +1275,15 @@ function updateModelCapabilities() {
     ? 'Agnes 使用 /images/generations，并在 extra_body.image 中传入原图，不会调用 /images/edits。'
     : '通用编辑模型使用 /images/edits；模型必须支持 multipart/form-data 图片上传。';
   els.editUploadTransport.textContent = editUsesAgnes
-    ? '原图会转为 Data URI Base64，通过 JSON 发送到 new-api'
+    ? state.agnesRoute === 'direct'
+      ? '原图会转为 Data URI Base64，通过 JSON 直连 Agnes'
+      : '原图会转为 Data URI Base64，通过 JSON 发送到 new-api'
     : '原图会以 multipart/form-data 上传到 new-api';
   els.editProtocolBadge.textContent = editUsesAgnes ? 'Agnes 图生图' : '编辑接口要求';
   els.editCapabilityText.textContent = editUsesAgnes
-    ? '支持真实改图，结果使用 Base64 返回。可用尺寸为 1024×768、1024×1024、768×1024；官方当前价格为 $0/张。'
+    ? state.agnesRoute === 'direct'
+      ? '支持真实改图，结果使用 Base64 返回。可用尺寸为 1024×768、1024×1024、768×1024；官方当前价格为 $0/张。'
+      : '通过 new-api 时请开启渠道“请求体透传”，否则 extra_body.image 可能被过滤。官方当前价格为 $0/张。'
     : '如果接口返回 404 或提示模型不支持，请确认 new-api 已启用对应编辑模型。SenseNova Flash-Lite 仅负责理解图片，不能输出改图结果。';
 
   document.querySelectorAll('[data-generation-model]').forEach((button) => {
@@ -1215,9 +1307,9 @@ function updateModelCapabilities() {
   }
 }
 
-function buildAgnesRequestBody({ prompt, size, images = [] }) {
+function buildAgnesRequestBody({ model = AGNES_MODEL, prompt, size, images = [] }) {
   const body = {
-    model: AGNES_MODEL,
+    model,
     prompt,
     size,
   };
@@ -1236,17 +1328,17 @@ function buildAgnesRequestBody({ prompt, size, images = [] }) {
 
 function buildEndpoint(input) {
   const raw = input.trim().replace(/\/+$/, '');
-  if (!raw) throw new Error('请输入 new-api 地址');
+  if (!raw) throw new Error('请输入 API 地址');
 
   let parsed;
   try {
     parsed = new URL(raw);
   } catch {
-    throw new Error('new-api 地址格式不正确，请填写完整的 http(s) 地址');
+    throw new Error('API 地址格式不正确，请填写完整的 http(s) 地址');
   }
 
   if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('new-api 地址必须使用 http 或 https');
+    throw new Error('API 地址必须使用 http 或 https');
   }
 
   if (/\/images\/generations$/i.test(parsed.pathname)) return raw;
@@ -1537,14 +1629,17 @@ async function generateImages(event) {
   if (state.mode !== 'generation') return;
   if (state.controller) return;
 
-  const apiKey = els.apiKey.value.trim();
   const model = els.modelName.value.trim();
   const prompt = els.prompt.value.trim();
   const useAgnes = isAgnesImageModel(model);
+  const connection = useAgnes
+    ? getAgnesConnection()
+    : { baseUrl: els.baseUrl.value.trim(), apiKey: els.apiKey.value.trim(), baseUrlInput: els.baseUrl, apiKeyInput: els.apiKey };
+  const apiKey = connection.apiKey;
 
   if (!apiKey) {
-    els.apiKey.focus();
-    showToast('请输入 API Key', 'error');
+    connection.apiKeyInput.focus();
+    showToast(useAgnes ? '请输入 Agnes API Key' : '请输入 API Key', 'error');
     return;
   }
   if (!prompt) {
@@ -1560,20 +1655,22 @@ async function generateImages(event) {
 
   let endpoint;
   try {
-    endpoint = buildEndpoint(els.baseUrl.value);
+    endpoint = buildEndpoint(connection.baseUrl);
   } catch (error) {
-    els.baseUrl.focus();
+    connection.baseUrlInput.focus();
     showToast(error.message, 'error');
     return;
   }
 
   persistConnectionSettings();
   persistApiKey();
+  if (useAgnes) persistAgnesSettings();
   safeStorageSet(STORAGE_KEYS.prompt, prompt);
 
   if (useAgnes) ensureAgnesSize();
   const requestBody = useAgnes
     ? buildAgnesRequestBody({
+        model,
         prompt: buildFinalPrompt(prompt),
         size: els.imageSize.value,
       })
@@ -1624,7 +1721,9 @@ async function generateImages(event) {
     if (error.name === 'AbortError') {
       showError('本次生成已取消，你可以修改描述后重新开始。');
     } else if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      showError('无法连接接口。请检查 new-api 地址、HTTPS 配置以及 CORS 是否允许 Authorization 请求头。');
+      showError(useAgnes && connection.route === 'direct'
+        ? '无法直连 Agnes。请检查 Agnes URL、Key，以及浏览器是否被 CORS 或网络策略拦截。也可以切换到 new-api 并开启请求体透传。'
+        : '无法连接接口。请检查 new-api 地址、HTTPS 配置以及 CORS 是否允许 Authorization 请求头。');
     } else {
       showError(error.message || '生成失败，请稍后重试。');
     }
@@ -1646,6 +1745,13 @@ els.toggleKey.addEventListener('click', () => {
   els.toggleKey.setAttribute('aria-label', isPassword ? '隐藏 API Key' : '显示 API Key');
 });
 
+els.toggleAgnesKey.addEventListener('click', () => {
+  const isPassword = els.agnesApiKey.type === 'password';
+  els.agnesApiKey.type = isPassword ? 'text' : 'password';
+  els.agnesKeyToggleIcon.textContent = isPassword ? '◌' : '◉';
+  els.toggleAgnesKey.setAttribute('aria-label', isPassword ? '隐藏 Agnes API Key' : '显示 Agnes API Key');
+});
+
 els.themeToggle.addEventListener('click', () => {
   const nextTheme = document.documentElement.dataset.colorMode === 'dark' ? 'light' : 'dark';
   applyTheme(nextTheme);
@@ -1659,6 +1765,13 @@ els.editModeTab.addEventListener('click', () => switchMode('edit'));
 els.rememberKey.addEventListener('change', persistApiKey);
 els.apiKey.addEventListener('change', persistApiKey);
 els.baseUrl.addEventListener('change', persistConnectionSettings);
+els.rememberAgnesKey.addEventListener('change', persistAgnesApiKey);
+els.agnesApiKey.addEventListener('change', persistAgnesApiKey);
+els.agnesBaseUrl.addEventListener('change', persistAgnesSettings);
+els.agnesRouteControl.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-agnes-route]');
+  if (button) setAgnesRoute(button.dataset.agnesRoute);
+});
 els.modelName.addEventListener('change', persistConnectionSettings);
 els.modelName.addEventListener('input', updateModelCapabilities);
 els.editModelName.addEventListener('input', updateModelCapabilities);
