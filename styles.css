@@ -251,6 +251,7 @@ a:focus-visible {
 }
 
 .control-panel {
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
   border-right: 1px solid var(--borderColor-default);
@@ -261,7 +262,7 @@ a:focus-visible {
 
 .workspace-switcher {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   margin-bottom: 20px;
   padding: 4px;
@@ -412,6 +413,176 @@ a:focus-visible {
   font-size: 9px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.model-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.model-option-card {
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 9px;
+  color: var(--fgColor-default);
+  text-align: left;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 7px;
+  background: var(--control-bgColor-rest);
+  box-shadow: var(--shadow-resting-small);
+}
+
+.model-option-card:hover {
+  border-color: var(--accent-emphasis);
+  background: var(--control-bgColor-hover);
+}
+
+.model-option-card.selected {
+  border-color: var(--accent-emphasis);
+  background: color-mix(in srgb, var(--accent-emphasis) 8%, var(--bgColor-default));
+  box-shadow: inset 3px 0 0 var(--accent-emphasis);
+}
+
+.model-option-title {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-option-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.model-capability-badge {
+  padding: 1px 5px;
+  color: var(--fgColor-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 999px;
+  background: var(--bgColor-default);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.model-capability-badge.provider-agnes {
+  color: var(--accent-fgColor-default);
+  border-color: color-mix(in srgb, var(--accent-emphasis) 30%, var(--borderColor-default));
+}
+
+.model-parameter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.model-parameter-heading .setting-label {
+  margin-bottom: 0;
+}
+
+.parameter-label {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--fgColor-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.parameter-segmented {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--bgColor-default);
+}
+
+.parameter-segmented button {
+  padding: 0 5px;
+  color: var(--fgColor-muted);
+  border: 0;
+  border-right: 1px solid var(--borderColor-default);
+  background: transparent;
+  font-size: 10px;
+}
+
+.parameter-segmented button:last-child {
+  border-right: 0;
+}
+
+.parameter-segmented button:hover,
+.ratio-choice-grid button:hover,
+.video-preset-grid button:hover {
+  background: var(--control-bgColor-hover);
+}
+
+.parameter-segmented button.selected,
+.ratio-choice-grid button.selected,
+.video-preset-grid button.selected {
+  color: #ffffff;
+  background: var(--accent-emphasis);
+}
+
+.ratio-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.ratio-choice-grid button {
+  min-height: 30px;
+  padding: 0 5px;
+  color: var(--fgColor-muted);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--control-bgColor-rest);
+  font-size: 10px;
+}
+
+.video-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.video-preset-grid button {
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px;
+  color: var(--fgColor-default);
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--control-bgColor-rest);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.video-preset-grid small {
+  color: inherit;
+  font-size: 9px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.video-advanced-grid {
+  margin-top: 12px;
 }
 
 .agnes-route-control {
@@ -1192,8 +1363,10 @@ textarea {
 
 .canvas-panel {
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(540px, 1fr) auto;
+  overflow: hidden;
   background: var(--bgColor-muted);
 }
 
@@ -1203,6 +1376,146 @@ textarea {
   display: grid;
   grid-template-rows: auto minmax(360px, 1fr) auto auto;
   background: var(--bgColor-muted);
+}
+
+.video-panel {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(540px, 1fr) auto;
+  overflow: hidden;
+  background: var(--bgColor-muted);
+}
+
+.video-surface {
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(24px, 5vw, 64px);
+  scrollbar-color: var(--borderColor-default) transparent;
+  scrollbar-width: thin;
+}
+
+.video-empty-state,
+.video-progress-state {
+  width: min(620px, 96%);
+  margin: min(12vh, 110px) auto 0;
+  padding: 44px 32px;
+  text-align: center;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-default);
+  box-shadow: var(--shadow-resting-small);
+}
+
+.video-empty-state h3,
+.video-progress-state h3 {
+  margin: 16px 0 8px;
+  font-size: 18px;
+}
+
+.video-empty-state p,
+.video-progress-state p {
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.video-progress-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  color: #ffffff;
+  border-radius: 50%;
+  background: var(--accent-emphasis);
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent-emphasis) 10%, transparent);
+  animation: videoPulse 1.8s ease-in-out infinite;
+}
+
+.video-progress-track {
+  height: 8px;
+  overflow: hidden;
+  margin-top: 22px;
+  border-radius: 999px;
+  background: var(--bgColor-muted);
+}
+
+.video-progress-track span {
+  width: 0;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--accent-emphasis);
+  transition: width 300ms ease;
+}
+
+.video-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--fgColor-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+}
+
+.video-result {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-default);
+  box-shadow: var(--shadow-resting-small);
+}
+
+.video-player-shell {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  background: #000000;
+}
+
+.video-player-shell video {
+  width: 100%;
+  max-height: min(68vh, 720px);
+  display: block;
+  background: #000000;
+}
+
+.video-result-info {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+}
+
+.video-result-info > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.video-result-info strong {
+  font-size: 13px;
+}
+
+.video-result-info span {
+  overflow: hidden;
+  color: var(--fgColor-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes videoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
 }
 
 .chat-toolbar {
@@ -2161,6 +2474,10 @@ body.modal-open {
     min-height: 720px;
   }
 
+  .video-panel {
+    min-height: 720px;
+  }
+
   .result-image {
     max-height: none;
   }
@@ -2194,7 +2511,7 @@ body.modal-open {
   }
 
   .workspace-switcher {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .workspace-tab {
@@ -2205,6 +2522,15 @@ body.modal-open {
 
   .workspace-tab svg {
     display: none;
+  }
+
+  .model-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .video-result-info {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .control-panel {
